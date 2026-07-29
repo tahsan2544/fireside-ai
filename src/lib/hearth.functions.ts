@@ -5,14 +5,17 @@ import { z } from "zod";
 // ---------- Types ----------
 export interface UsageInfo {
   messagesUsed: number;
-  messagesRemaining: number;
   conversationsUsed: number;
-  maxConversations: number;
-  maxDailyMessages: number;
   isAdmin: boolean;
   displayName: string;
   email: string;
 }
+
+const AttachmentSchema = z.object({
+  url: z.string().url(),
+  type: z.string().min(1).max(120),
+  name: z.string().min(1).max(200),
+});
 
 function todayUTC(): string {
   return new Date().toISOString().slice(0, 10);
@@ -23,24 +26,16 @@ export const getMe = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<UsageInfo> => {
     const { supabase, userId } = context;
-    const [{ data: profile }, { data: config }, { data: roleRow }, { count: convoCount }, { data: usage }] = await Promise.all([
+    const [{ data: profile }, { data: roleRow }, { count: convoCount }, { data: usage }] = await Promise.all([
       supabase.from("profiles").select("display_name, email").eq("id", userId).maybeSingle(),
-      supabase.from("admin_config").select("max_conversations, max_daily_messages").eq("id", 1).maybeSingle(),
       supabase.from("user_roles").select("role").eq("user_id", userId).eq("role", "admin").maybeSingle(),
       supabase.from("conversations").select("*", { count: "exact", head: true }).eq("user_id", userId),
       supabase.from("daily_usage").select("message_count").eq("user_id", userId).eq("date", todayUTC()).maybeSingle(),
     ]);
 
-    const maxConversations = config?.max_conversations ?? 10;
-    const maxDailyMessages = config?.max_daily_messages ?? 20;
-    const messagesUsed = usage?.message_count ?? 0;
-
     return {
-      messagesUsed,
-      messagesRemaining: Math.max(0, maxDailyMessages - messagesUsed),
+      messagesUsed: usage?.message_count ?? 0,
       conversationsUsed: convoCount ?? 0,
-      maxConversations,
-      maxDailyMessages,
       isAdmin: !!roleRow,
       displayName: profile?.display_name ?? "friend",
       email: profile?.email ?? "",
@@ -75,10 +70,6 @@ export const createConversation = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => z.object({ title: z.string().min(1).max(80).optional() }).parse(d))
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
-    const { data: config } = await supabase.from("admin_config").select("max_conversations").eq("id", 1).maybeSingle();
-    const max = config?.max_conversations ?? 10;
-    const { count } = await supabase.from("conversations").select("*", { count: "exact", head: true }).eq("user_id", userId);
-    if ((count ?? 0) >= max) throw new Error(`All ${max} rooms are full. Close one to open a new one.`);
     const { data: inserted, error } = await supabase
       .from("conversations")
       .insert({ user_id: userId, title: data.title ?? "A Quiet Room" })
@@ -102,7 +93,7 @@ export const getConversation = createServerFn({ method: "GET" })
     if (!convo || convo.user_id !== userId) throw new Error("Room not found");
     const { data: messages } = await supabase
       .from("messages")
-      .select("id, role, content, created_at")
+      .select("id, role, content, created_at, attachments")
       .eq("conversation_id", data.id)
       .order("created_at", { ascending: true });
     return { conversation: { id: convo.id, title: convo.title }, messages: messages ?? [] };
@@ -113,6 +104,15 @@ export const deleteConversation = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
+    // Verify ownership first
+    const { data: convo } = await supabase.from("conversations").select("user_id").eq("id", data.id).maybeSingle();
+    if (!convo || convo.user_id !== userId) throw new Error("Room not found");
+
+    // Clean up storage files for this conversation
+    const { data: files } = await supabase.storage.from("chat-attachments").list(data.id);
+    if (files && files.length) {
+      await supabase.storage.from("chat-attachments").remove(files.map((f) => `${data.id}/${f.name}`));
+    }
     const { error } = await supabase.from("conversations").delete().eq("id", data.id).eq("user_id", userId);
     if (error) throw error;
     return { ok: true };
@@ -128,71 +128,186 @@ export const renameConversation = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+// ---------- Signed upload URL (client uploads directly) ----------
+export const createUploadUrl = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ conversationId: z.string().uuid(), filename: z.string().min(1).max(200) }).parse(d))
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+    const { data: convo } = await supabase.from("conversations").select("user_id").eq("id", data.conversationId).maybeSingle();
+    if (!convo || convo.user_id !== userId) throw new Error("Room not found");
+    const safeName = data.filename.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const path = `${data.conversationId}/${Date.now()}-${safeName}`;
+    const { data: signed, error } = await supabase.storage.from("chat-attachments").createSignedUploadUrl(path);
+    if (error) throw error;
+    return { path, token: signed.token };
+  });
+
+export const createReadUrl = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ path: z.string().min(1) }).parse(d))
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+    const convId = data.path.split("/")[0];
+    const { data: convo } = await supabase.from("conversations").select("user_id").eq("id", convId).maybeSingle();
+    if (!convo || convo.user_id !== userId) throw new Error("Not allowed");
+    const { data: signed, error } = await supabase.storage.from("chat-attachments").createSignedUrl(data.path, 60 * 60);
+    if (error) throw error;
+    return { url: signed.signedUrl };
+  });
+
 // ---------- Send message ----------
 export const sendMessage = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) => z.object({ conversationId: z.string().uuid(), content: z.string().min(1).max(2000) }).parse(d))
+  .inputValidator((d: unknown) =>
+    z.object({
+      conversationId: z.string().uuid(),
+      content: z.string().max(4000).default(""),
+      attachments: z.array(AttachmentSchema).max(6).default([]),
+    }).parse(d)
+  )
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
-    // Verify ownership
+    if (!data.content.trim() && data.attachments.length === 0) throw new Error("Say something, or attach something.");
+
     const { data: convo } = await supabase.from("conversations").select("id, user_id, title").eq("id", data.conversationId).maybeSingle();
     if (!convo || convo.user_id !== userId) throw new Error("Room not found");
 
-    // Check limits
-    const { data: config } = await supabase.from("admin_config").select("max_daily_messages").eq("id", 1).maybeSingle();
-    const max = config?.max_daily_messages ?? 20;
-    const today = todayUTC();
-    const { data: usage } = await supabase.from("daily_usage").select("id, message_count").eq("user_id", userId).eq("date", today).maybeSingle();
-    const used = usage?.message_count ?? 0;
-    if (used >= max) throw new Error("You've used all your words for today. The fire's banked. Rest well.");
-
-    // Insert user message
-    const { error: uErr } = await supabase.from("messages").insert({ conversation_id: data.conversationId, role: "user", content: data.content });
+    // Insert user message with attachments
+    const { error: uErr } = await supabase.from("messages").insert({
+      conversation_id: data.conversationId,
+      role: "user",
+      content: data.content,
+      attachments: data.attachments,
+    });
     if (uErr) throw uErr;
 
-    // Load history (last 20 messages for context)
+    // Load recent history for context
     const { data: recent } = await supabase
       .from("messages")
-      .select("role, content")
+      .select("role, content, attachments")
       .eq("conversation_id", data.conversationId)
       .order("created_at", { ascending: true })
       .limit(40);
 
     const { callHearth } = await import("./hearth.server");
-    let assistantContent: string;
-    try {
-      assistantContent = await callHearth((recent ?? []).map((m) => ({ role: m.role as "user" | "assistant", content: m.content })));
-    } catch (err) {
-      // Roll back count (don't charge on failure)
-      throw err;
-    }
+    const assistantContent = await callHearth(
+      (recent ?? []).map((m: any) => ({
+        role: m.role as "user" | "assistant",
+        content: m.content,
+        attachments: (m.attachments ?? []) as any,
+      }))
+    );
 
-    // Insert assistant reply
     const { data: assistantRow, error: aErr } = await supabase
       .from("messages")
       .insert({ conversation_id: data.conversationId, role: "assistant", content: assistantContent })
-      .select("id, role, content, created_at")
+      .select("id, role, content, created_at, attachments")
       .single();
     if (aErr) throw aErr;
 
-    // Update conversation timestamp + auto-title if first exchange
     const updates: { updated_at: string; title?: string } = { updated_at: new Date().toISOString() };
-    if (convo.title === "A Quiet Room" && (recent?.length ?? 0) <= 1) {
+    if (convo.title === "A Quiet Room" && (recent?.length ?? 0) <= 1 && data.content.trim()) {
       updates.title = data.content.slice(0, 40) + (data.content.length > 40 ? "…" : "");
     }
     await supabase.from("conversations").update(updates).eq("id", data.conversationId);
 
-    // Bump usage
+    // Track usage (no enforcement — just analytics)
+    const today = todayUTC();
+    const { data: usage } = await supabase.from("daily_usage").select("id, message_count").eq("user_id", userId).eq("date", today).maybeSingle();
     if (usage) {
-      await supabase.from("daily_usage").update({ message_count: used + 1 }).eq("id", usage.id);
+      await supabase.from("daily_usage").update({ message_count: usage.message_count + 1 }).eq("id", usage.id);
     } else {
       await supabase.from("daily_usage").insert({ user_id: userId, date: today, message_count: 1 });
     }
 
-    return {
-      assistant: assistantRow,
-      messagesRemaining: Math.max(0, max - (used + 1)),
-    };
+    return { assistant: assistantRow };
+  });
+
+// ---------- Generate image ----------
+export const generateImage = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ conversationId: z.string().uuid(), prompt: z.string().min(1).max(500) }).parse(d))
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+    const { data: convo } = await supabase.from("conversations").select("user_id").eq("id", data.conversationId).maybeSingle();
+    if (!convo || convo.user_id !== userId) throw new Error("Room not found");
+
+    const { generateHearthImage } = await import("./hearth.server");
+    const { base64, mimeType } = await generateHearthImage(data.prompt);
+
+    const ext = mimeType.split("/")[1] ?? "png";
+    const path = `${data.conversationId}/${Date.now()}-gen.${ext}`;
+    const bytes = Buffer.from(base64, "base64");
+    const { error: upErr } = await supabase.storage.from("chat-attachments").upload(path, bytes, { contentType: mimeType, upsert: false });
+    if (upErr) throw upErr;
+
+    const { data: signed } = await supabase.storage.from("chat-attachments").createSignedUrl(path, 60 * 60 * 24 * 365);
+    const attachment = { url: signed?.signedUrl ?? "", type: mimeType, name: `image.${ext}`, path };
+
+    // Store user prompt + assistant reply with image
+    await supabase.from("messages").insert({
+      conversation_id: data.conversationId,
+      role: "user",
+      content: `🎨 ${data.prompt}`,
+    });
+    const { data: assistantRow, error: aErr } = await supabase
+      .from("messages")
+      .insert({
+        conversation_id: data.conversationId,
+        role: "assistant",
+        content: "here — hope this fits what you had in mind.",
+        attachments: [attachment],
+      })
+      .select("id, role, content, created_at, attachments")
+      .single();
+    if (aErr) throw aErr;
+
+    await supabase.from("conversations").update({ updated_at: new Date().toISOString() }).eq("id", data.conversationId);
+    return { assistant: assistantRow };
+  });
+
+// ---------- Generate document ----------
+export const generateDocument = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ conversationId: z.string().uuid(), prompt: z.string().min(1).max(1000) }).parse(d))
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+    const { data: convo } = await supabase.from("conversations").select("user_id").eq("id", data.conversationId).maybeSingle();
+    if (!convo || convo.user_id !== userId) throw new Error("Room not found");
+
+    const { generateHearthDocument } = await import("./hearth.server");
+    const markdown = await generateHearthDocument(data.prompt);
+
+    const filename = `document-${Date.now()}.md`;
+    const path = `${data.conversationId}/${filename}`;
+    const { error: upErr } = await supabase.storage.from("chat-attachments").upload(path, new Blob([markdown], { type: "text/markdown" }), {
+      contentType: "text/markdown",
+      upsert: false,
+    });
+    if (upErr) throw upErr;
+    const { data: signed } = await supabase.storage.from("chat-attachments").createSignedUrl(path, 60 * 60 * 24 * 365);
+    const attachment = { url: signed?.signedUrl ?? "", type: "text/markdown", name: filename };
+
+    await supabase.from("messages").insert({
+      conversation_id: data.conversationId,
+      role: "user",
+      content: `📄 ${data.prompt}`,
+    });
+    const { data: assistantRow, error: aErr } = await supabase
+      .from("messages")
+      .insert({
+        conversation_id: data.conversationId,
+        role: "assistant",
+        content: markdown.length > 400 ? markdown.slice(0, 400) + "…" : markdown,
+        attachments: [attachment],
+      })
+      .select("id, role, content, created_at, attachments")
+      .single();
+    if (aErr) throw aErr;
+
+    await supabase.from("conversations").update({ updated_at: new Date().toISOString() }).eq("id", data.conversationId);
+    return { assistant: assistantRow };
   });
 
 // ---------- Admin ----------
@@ -212,13 +327,11 @@ export const adminOverview = createServerFn({ method: "GET" })
       supabase.from("messages").select("*", { count: "exact", head: true }),
       supabase.from("daily_usage").select("user_id").eq("date", todayUTC()),
     ]);
-    const { data: config } = await supabase.from("admin_config").select("*").eq("id", 1).maybeSingle();
     return {
       totalUsers: totalUsers ?? 0,
       totalConversations: totalConvos ?? 0,
       totalMessages: totalMsgs ?? 0,
       activeUsersToday: activeToday?.length ?? 0,
-      config: config ?? { max_conversations: 10, max_daily_messages: 20 },
     };
   });
 
@@ -245,22 +358,6 @@ export const adminListUsers = createServerFn({ method: "GET" })
       conversationCount: convosByUser[p.id] ?? 0,
       messagesToday: usageByUser[p.id] ?? 0,
     }));
-  });
-
-export const adminUpdateConfig = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) => z.object({ maxConversations: z.number().int().min(1).max(1000), maxDailyMessages: z.number().int().min(1).max(10000) }).parse(d))
-  .handler(async ({ context, data }) => {
-    const { supabase, userId } = context;
-    await assertAdmin(supabase, userId);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error } = await supabaseAdmin.from("admin_config").update({
-      max_conversations: data.maxConversations,
-      max_daily_messages: data.maxDailyMessages,
-      updated_at: new Date().toISOString(),
-    }).eq("id", 1);
-    if (error) throw error;
-    return { ok: true };
   });
 
 export const adminToggleSuspend = createServerFn({ method: "POST" })

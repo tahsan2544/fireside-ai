@@ -1,13 +1,12 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { adminOverview, adminListUsers, adminUpdateConfig, adminToggleSuspend, getMe } from "@/lib/hearth.functions";
+import { adminOverview, adminListUsers, adminToggleSuspend, getMe } from "@/lib/hearth.functions";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { ArrowLeft } from "lucide-react";
+
 
 export const Route = createFileRoute("/_authenticated/admin")({
   component: Admin,
@@ -19,37 +18,22 @@ function Admin() {
   const meFn = useServerFn(getMe);
   const overviewFn = useServerFn(adminOverview);
   const usersFn = useServerFn(adminListUsers);
-  const updateCfgFn = useServerFn(adminUpdateConfig);
   const suspendFn = useServerFn(adminToggleSuspend);
 
   const me = useQuery({ queryKey: ["me"], queryFn: () => meFn() });
   const overview = useQuery({ queryKey: ["admin-overview"], queryFn: () => overviewFn(), enabled: !!me.data?.isAdmin });
   const users = useQuery({ queryKey: ["admin-users"], queryFn: () => usersFn(), enabled: !!me.data?.isAdmin });
 
-  const [maxC, setMaxC] = useState(10);
-  const [maxM, setMaxM] = useState(20);
-
-  useEffect(() => {
-    if (overview.data) {
-      setMaxC(overview.data.config.max_conversations);
-      setMaxM(overview.data.config.max_daily_messages);
-    }
-  }, [overview.data]);
-
   useEffect(() => {
     if (me.data && !me.data.isAdmin) navigate({ to: "/dashboard" });
   }, [me.data, navigate]);
 
-  const updateCfg = useMutation({
-    mutationFn: () => updateCfgFn({ data: { maxConversations: maxC, maxDailyMessages: maxM } }),
-    onSuccess: () => { toast.success("Limits updated"); qc.invalidateQueries({ queryKey: ["admin-overview"] }); qc.invalidateQueries({ queryKey: ["me"] }); },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Update failed"),
-  });
-
   const suspend = useMutation({
     mutationFn: ({ id, suspended }: { id: string; suspended: boolean }) => suspendFn({ data: { userId: id, suspended } }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["admin-users"] }); },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Update failed"),
   });
+
 
   if (!me.data?.isAdmin) return <div className="p-8 text-center text-muted-foreground">Checking…</div>;
 
@@ -84,23 +68,7 @@ function Admin() {
           </div>
         </section>
 
-        {/* Config */}
-        <section>
-          <h2 className="serif text-2xl mb-4">Global limits</h2>
-          <div className="rounded-xl bg-card warm-border p-6 max-w-xl">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="maxc">Max rooms per user</Label>
-                <Input id="maxc" type="number" min={1} max={1000} value={maxC} onChange={(e) => setMaxC(Number(e.target.value))} className="mt-1" />
-              </div>
-              <div>
-                <Label htmlFor="maxm">Max messages per day</Label>
-                <Input id="maxm" type="number" min={1} max={10000} value={maxM} onChange={(e) => setMaxM(Number(e.target.value))} className="mt-1" />
-              </div>
-            </div>
-            <Button onClick={() => updateCfg.mutate()} disabled={updateCfg.isPending} className="mt-4">Save limits</Button>
-          </div>
-        </section>
+
 
         {/* Users */}
         <section>
