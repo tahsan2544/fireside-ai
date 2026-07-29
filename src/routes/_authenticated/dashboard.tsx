@@ -46,8 +46,6 @@ function Dashboard() {
   };
 
   const info = me.data;
-  const roomsFull = info ? info.conversationsUsed >= info.maxConversations : false;
-  const outOfWords = info ? info.messagesRemaining === 0 : false;
 
   return (
     <div className="min-h-screen">
@@ -61,8 +59,7 @@ function Dashboard() {
             </div>
           </div>
           <div className="flex items-center gap-4 text-xs text-muted-foreground">
-            <span>Words today: <strong className="text-foreground">{info ? info.messagesRemaining : "…"}/{info?.maxDailyMessages ?? "…"}</strong></span>
-            <span>Rooms: <strong className="text-foreground">{info?.conversationsUsed ?? "…"}/{info?.maxConversations ?? "…"}</strong></span>
+            <span>Rooms: <strong className="text-foreground">{info?.conversationsUsed ?? "…"}</strong></span>
             {info?.isAdmin && (
               <Link to="/admin" className="text-primary hover:underline inline-flex items-center gap-1"><Shield className="w-3.5 h-3.5" />Admin</Link>
             )}
@@ -75,23 +72,18 @@ function Dashboard() {
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="serif text-3xl">Your rooms</h1>
-            <p className="text-sm text-muted-foreground mt-1 italic">New words arrive at midnight (UTC).</p>
+            <p className="text-sm text-muted-foreground mt-1 italic">Open as many as you like. Sit as long as you like.</p>
           </div>
           <Button
             onClick={() => create.mutate()}
-            disabled={roomsFull || create.isPending}
+            disabled={create.isPending}
             className="rounded-full"
           >
             <DoorOpen className="w-4 h-4 mr-2" />
-            {roomsFull ? "All 10 rooms are full" : "Open a New Room"}
+            Open a New Room
           </Button>
         </div>
 
-        {outOfWords && (
-          <div className="mb-6 rounded-xl bg-accent/40 border border-accent/60 p-4 text-sm italic serif text-foreground/80">
-            You've used all your words for today. The fire's banked. Rest well — new words arrive at midnight.
-          </div>
-        )}
 
         {rooms.isLoading ? (
           <p className="text-muted-foreground text-sm">Kindling the rooms…</p>
