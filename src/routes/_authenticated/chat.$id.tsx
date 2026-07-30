@@ -15,7 +15,9 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { ArrowLeft, Send, Paperclip, ImagePlus, FileText, Trash2, X, Download } from "lucide-react";
+import { VoiceRoom } from "@/components/VoiceRoom";
+import { ArrowLeft, Send, Paperclip, ImagePlus, FileText, Trash2, X, Download, Mic } from "lucide-react";
+
 
 export const Route = createFileRoute("/_authenticated/chat/$id")({
   component: Chat,
