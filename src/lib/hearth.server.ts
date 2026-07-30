@@ -56,17 +56,13 @@ export async function callHearth(
     ...history.map((m) => {
       const atts = m.attachments ?? [];
       if (!atts.length) return { role: m.role, content: m.content };
-      const parts: any[] = [];
-      if (m.content) parts.push({ type: "text", text: m.content });
-      for (const a of atts) {
-        if (a.type.startsWith("image/")) {
-          parts.push({ type: "image_url", image_url: { url: a.url } });
-        } else {
-          parts.push({ type: "text", text: `[attached file: ${a.name}]` });
-        }
-      }
-      return { role: m.role, content: parts };
+      // Nemotron is text-only: describe attachments instead of sending them.
+      const note = atts
+        .map((a) => (a.type.startsWith("image/") ? `[shared a photo: ${a.name}]` : `[shared a file: ${a.name}]`))
+        .join(" ");
+      return { role: m.role, content: [m.content, note].filter(Boolean).join("\n") };
     }),
+
   ];
 
   return openRouterChat(messages);
