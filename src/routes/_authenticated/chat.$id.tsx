@@ -243,6 +243,10 @@ function Chat() {
               <Button type="button" variant="ghost" size="icon" onClick={handleDocGen} disabled={busy} title="Generate a document">
                 <FileText className="w-4 h-4" />
               </Button>
+              <Button type="button" variant="ghost" size="icon" onClick={handleVoice} disabled={busy} title="Live voice">
+                <Mic className="w-4 h-4" />
+              </Button>
+
             </div>
             <Textarea
               ref={textareaRef}
