@@ -137,9 +137,8 @@ function Chat() {
     const p = window.prompt("What document should I write for you? (a poem, a letter, notes on something…)");
     if (p && p.trim()) genDoc.mutate(p.trim());
   };
-  const handleVoice = () => {
-    toast.info("Live voice needs an ElevenLabs connection. Ask Lovable to connect ElevenLabs to enable it.");
-  };
+  const handleVoice = () => setVoiceOpen(true);
+
 
   if (conv.isError) {
     return (
