@@ -109,32 +109,59 @@ export async function generateHearthImage(prompt: string): Promise<{ base64: str
 
 // ---------- Document generation (markdown) ----------
 export async function generateHearthDocument(prompt: string): Promise<string> {
-  const apiKey = process.env.LOVABLE_API_KEY;
-  if (!apiKey) throw new Error("LOVABLE_API_KEY not configured");
+  return openRouterChat([
+    {
+      role: "system",
+      content:
+        "You produce clean, well-structured markdown documents. Include a top-level title (# ...), sections, and prose. No preamble like 'Here is your document'. Just the document.",
+    },
+    { role: "user", content: prompt },
+  ]);
+}
 
-  const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+// ---------- ElevenLabs voice ----------
+function elevenKey(): string {
+  const key = process.env.ELEVENLABS_API_KEY;
+  if (!key) throw new Error("ElevenLabs isn't connected yet.");
+  return key;
+}
+
+export async function transcribeAudio(bytes: Uint8Array, mimeType: string): Promise<string> {
+  const form = new FormData();
+  form.append("file", new Blob([bytes as unknown as BlobPart], { type: mimeType }), "recording.webm");
+  form.append("model_id", "scribe_v2");
+
+  const res = await fetch("https://api.elevenlabs.io/v1/speech-to-text", {
     method: "POST",
-    headers: { "Content-Type": "application/json", "Lovable-API-Key": apiKey },
-    body: JSON.stringify({
-      model: "openai/gpt-5.6-sol",
-      reasoning_effort: "none",
-      messages: [
-        {
-          role: "system",
-          content:
-            "You produce clean, well-structured markdown documents. Include a top-level title (# ...), sections, and prose. No preamble like 'Here is your document'. Just the document.",
-        },
-        { role: "user", content: prompt },
-      ],
-    }),
+    headers: { "xi-api-key": elevenKey() },
+    body: form,
   });
   if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    if (res.status === 402) throw new Error("The hearth needs more wood (AI credits).");
-    throw new Error(`Document error (${res.status}): ${text.slice(0, 200)}`);
+    const t = await res.text().catch(() => "");
+    throw new Error(`Couldn't hear that (${res.status}): ${t.slice(0, 160)}`);
   }
   const json = await res.json();
-  const content = json?.choices?.[0]?.message?.content;
-  if (typeof content !== "string") throw new Error("Empty document response");
-  return content.trim();
+  return (json?.text ?? "").trim();
 }
+
+export async function speakText(text: string, voiceId = "XrExE9yKIg1WjnnlVkGX"): Promise<string> {
+  const res = await fetch(
+    `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=mp3_44100_128`,
+    {
+      method: "POST",
+      headers: { "xi-api-key": elevenKey(), "Content-Type": "application/json" },
+      body: JSON.stringify({
+        text: text.slice(0, 2500),
+        model_id: "eleven_turbo_v2_5",
+        voice_settings: { stability: 0.45, similarity_boost: 0.75, style: 0.35, use_speaker_boost: true },
+      }),
+    }
+  );
+  if (!res.ok) {
+    const t = await res.text().catch(() => "");
+    throw new Error(`Voice failed (${res.status}): ${t.slice(0, 160)}`);
+  }
+  const buf = await res.arrayBuffer();
+  return Buffer.from(buf).toString("base64");
+}
+
