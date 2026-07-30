@@ -268,7 +268,15 @@ function Chat() {
           </p>
         </div>
       </div>
+
+      <VoiceRoom
+        conversationId={id}
+        open={voiceOpen}
+        onOpenChange={setVoiceOpen}
+        onTurnComplete={() => qc.invalidateQueries({ queryKey: ["conv", id] })}
+      />
     </div>
+
   );
 }
 
