@@ -15,7 +15,9 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { ArrowLeft, Send, Paperclip, ImagePlus, FileText, Trash2, X, Download } from "lucide-react";
+import { VoiceRoom } from "@/components/VoiceRoom";
+import { ArrowLeft, Send, Paperclip, ImagePlus, FileText, Trash2, X, Download, Mic } from "lucide-react";
+
 
 export const Route = createFileRoute("/_authenticated/chat/$id")({
   component: Chat,
@@ -37,7 +39,10 @@ function Chat() {
 
   const [input, setInput] = useState("");
   const [pending, setPending] = useState<PendingAttachment[]>([]);
+  const [voiceOpen, setVoiceOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
+
+
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -132,9 +137,8 @@ function Chat() {
     const p = window.prompt("What document should I write for you? (a poem, a letter, notes on something…)");
     if (p && p.trim()) genDoc.mutate(p.trim());
   };
-  const handleVoice = () => {
-    toast.info("Live voice needs an ElevenLabs connection. Ask Lovable to connect ElevenLabs to enable it.");
-  };
+  const handleVoice = () => setVoiceOpen(true);
+
 
   if (conv.isError) {
     return (
@@ -239,6 +243,10 @@ function Chat() {
               <Button type="button" variant="ghost" size="icon" onClick={handleDocGen} disabled={busy} title="Generate a document">
                 <FileText className="w-4 h-4" />
               </Button>
+              <Button type="button" variant="ghost" size="icon" onClick={handleVoice} disabled={busy} title="Live voice">
+                <Mic className="w-4 h-4" />
+              </Button>
+
             </div>
             <Textarea
               ref={textareaRef}
@@ -260,7 +268,15 @@ function Chat() {
           </p>
         </div>
       </div>
+
+      <VoiceRoom
+        conversationId={id}
+        open={voiceOpen}
+        onOpenChange={setVoiceOpen}
+        onTurnComplete={() => qc.invalidateQueries({ queryKey: ["conv", id] })}
+      />
     </div>
+
   );
 }
 

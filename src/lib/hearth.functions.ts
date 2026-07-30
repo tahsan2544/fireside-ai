@@ -371,3 +371,131 @@ export const adminToggleSuspend = createServerFn({ method: "POST" })
     if (error) throw error;
     return { ok: true };
   });
+
+// ---------- Live voice ----------
+export const voiceTurn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({
+      conversationId: z.string().uuid(),
+      audioBase64: z.string().min(16),
+      mimeType: z.string().min(3).max(80).default("audio/webm"),
+    }).parse(d)
+  )
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+    const { data: convo } = await supabase.from("conversations").select("user_id").eq("id", data.conversationId).maybeSingle();
+    if (!convo || convo.user_id !== userId) throw new Error("Room not found");
+
+    const { transcribeAudio, speakText, callHearth } = await import("./hearth.server");
+    const bytes = Buffer.from(data.audioBase64, "base64");
+    const transcript = await transcribeAudio(new Uint8Array(bytes), data.mimeType);
+    if (!transcript) throw new Error("I didn't catch that — try again?");
+
+    await supabase.from("messages").insert({
+      conversation_id: data.conversationId,
+      role: "user",
+      content: transcript,
+    });
+
+    const { data: recent } = await supabase
+      .from("messages")
+      .select("role, content, attachments")
+      .eq("conversation_id", data.conversationId)
+      .order("created_at", { ascending: true })
+      .limit(40);
+
+    const reply = await callHearth(
+      (recent ?? []).map((m: any) => ({ role: m.role, content: m.content, attachments: (m.attachments ?? []) as any }))
+    );
+
+    await supabase.from("messages").insert({
+      conversation_id: data.conversationId,
+      role: "assistant",
+      content: reply,
+    });
+    await supabase.from("conversations").update({ updated_at: new Date().toISOString() }).eq("id", data.conversationId);
+
+    const audio = await speakText(reply);
+    return { transcript, reply, audioBase64: audio };
+  });
+
+// ---------- Admin: analytics series ----------
+export const adminSeries = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+    await assertAdmin(supabase, userId);
+    const since = new Date(Date.now() - 13 * 86400000).toISOString().slice(0, 10);
+
+    const [{ data: usage }, { data: profiles }] = await Promise.all([
+      supabase.from("daily_usage").select("date, message_count, user_id").gte("date", since),
+      supabase.from("profiles").select("created_at").gte("created_at", `${since}T00:00:00Z`),
+    ]);
+
+    const days: string[] = [];
+    for (let i = 13; i >= 0; i--) days.push(new Date(Date.now() - i * 86400000).toISOString().slice(0, 10));
+
+    const msgs: Record<string, number> = {};
+    const active: Record<string, Set<string>> = {};
+    (usage ?? []).forEach((u: any) => {
+      msgs[u.date] = (msgs[u.date] ?? 0) + (u.message_count ?? 0);
+      (active[u.date] ??= new Set()).add(u.user_id);
+    });
+    const signups: Record<string, number> = {};
+    (profiles ?? []).forEach((p: any) => {
+      const d = String(p.created_at).slice(0, 10);
+      signups[d] = (signups[d] ?? 0) + 1;
+    });
+
+    return days.map((d) => ({
+      date: d.slice(5),
+      messages: msgs[d] ?? 0,
+      activeUsers: active[d]?.size ?? 0,
+      signups: signups[d] ?? 0,
+    }));
+  });
+
+// ---------- Admin: user detail ----------
+export const adminUserDetail = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ userId: z.string().uuid() }).parse(d))
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+    await assertAdmin(supabase, userId);
+    const [{ data: profile }, { data: rooms }, { data: usage }] = await Promise.all([
+      supabase.from("profiles").select("id, email, display_name, suspended, created_at, last_active_at").eq("id", data.userId).maybeSingle(),
+      supabase.from("conversations").select("id, title, created_at, updated_at").eq("user_id", data.userId).order("updated_at", { ascending: false }),
+      supabase.from("daily_usage").select("date, message_count").eq("user_id", data.userId).order("date", { ascending: false }).limit(14),
+    ]);
+    const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", data.userId);
+    return {
+      profile,
+      rooms: rooms ?? [],
+      usage: usage ?? [],
+      roles: (roles ?? []).map((r: any) => r.role as string),
+      totalMessages: (usage ?? []).reduce((s: number, u: any) => s + (u.message_count ?? 0), 0),
+    };
+  });
+
+// ---------- Admin: delete user ----------
+export const adminDeleteUser = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ userId: z.string().uuid() }).parse(d))
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+    await assertAdmin(supabase, userId);
+    if (data.userId === userId) throw new Error("You can't delete your own account here.");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: rooms } = await supabaseAdmin.from("conversations").select("id").eq("user_id", data.userId);
+    for (const r of rooms ?? []) {
+      const { data: files } = await supabaseAdmin.storage.from("chat-attachments").list(r.id);
+      if (files?.length) {
+        await supabaseAdmin.storage.from("chat-attachments").remove(files.map((f) => `${r.id}/${f.name}`));
+      }
+    }
+    const { error } = await supabaseAdmin.auth.admin.deleteUser(data.userId);
+    if (error) throw error;
+    return { ok: true };
+  });
