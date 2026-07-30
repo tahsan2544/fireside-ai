@@ -19,12 +19,38 @@ interface ChatMessage {
   content: any;
 }
 
+const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
+const OPENROUTER_MODEL = "nvidia/nemotron-3-ultra-550b-a55b:free";
+
+async function openRouterChat(messages: ChatMessage[]): Promise<string> {
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) throw new Error("OPENROUTER_API_KEY not configured");
+
+  const res = await fetch(OPENROUTER_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({ model: OPENROUTER_MODEL, messages }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    if (res.status === 429) throw new Error("The fire's a little overwhelmed right now — try again in a moment.");
+    if (res.status === 402) throw new Error("OpenRouter credits are exhausted. Add credits on openrouter.ai.");
+    if (res.status === 401) throw new Error("The OpenRouter key was rejected. Check the key and try again.");
+    throw new Error(`AI error (${res.status}): ${text.slice(0, 200)}`);
+  }
+  const json = await res.json();
+  const content = json?.choices?.[0]?.message?.content;
+  if (typeof content !== "string" || !content.trim()) throw new Error("Empty AI response");
+  return content.trim();
+}
+
 export async function callHearth(
   history: { role: "user" | "assistant"; content: string; attachments?: StoredAttachment[] }[]
 ): Promise<string> {
-  const apiKey = process.env.LOVABLE_API_KEY;
-  if (!apiKey) throw new Error("LOVABLE_API_KEY not configured");
-
   const messages: ChatMessage[] = [
     { role: "system", content: SYSTEM_PROMPT },
     ...history.map((m) => {
@@ -36,7 +62,6 @@ export async function callHearth(
         if (a.type.startsWith("image/")) {
           parts.push({ type: "image_url", image_url: { url: a.url } });
         } else {
-          // documents — reference by name; the model can't fetch signed URLs
           parts.push({ type: "text", text: `[attached file: ${a.name}]` });
         }
       }
@@ -44,30 +69,9 @@ export async function callHearth(
     }),
   ];
 
-  const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Lovable-API-Key": apiKey,
-    },
-    body: JSON.stringify({
-      model: "openai/gpt-5.6-sol",
-      messages,
-      reasoning_effort: "none",
-    }),
-  });
-
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    if (res.status === 429) throw new Error("The fire's a little overwhelmed right now — try again in a moment.");
-    if (res.status === 402) throw new Error("The hearth needs more wood (AI credits). Please add credits in Lovable.");
-    throw new Error(`AI error (${res.status}): ${text.slice(0, 200)}`);
-  }
-  const json = await res.json();
-  const content = json?.choices?.[0]?.message?.content;
-  if (typeof content !== "string") throw new Error("Empty AI response");
-  return content.trim();
+  return openRouterChat(messages);
 }
+
 
 // ---------- Image generation ----------
 export async function generateHearthImage(prompt: string): Promise<{ base64: string; mimeType: string }> {
