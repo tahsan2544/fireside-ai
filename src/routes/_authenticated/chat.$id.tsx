@@ -39,7 +39,8 @@ function Chat() {
 
   const [input, setInput] = useState("");
   const [pending, setPending] = useState<PendingAttachment[]>([]);
-  const [uploading, setUploading] = useState(false);
+  const [voiceOpen, setVoiceOpen] = useState(false);
+
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
