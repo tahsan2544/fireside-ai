@@ -12,7 +12,10 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
+import { Route as AuthenticatedHearthRouteImport } from './routes/_authenticated/hearth'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedCommonsRouteImport } from './routes/_authenticated/commons'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedChatIdRouteImport } from './routes/_authenticated/chat.$id'
 
@@ -30,9 +33,24 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedHearthRoute = AuthenticatedHearthRouteImport.update({
+  id: '/hearth',
+  path: '/hearth',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedCommonsRoute = AuthenticatedCommonsRouteImport.update({
+  id: '/commons',
+  path: '/commons',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
@@ -50,14 +68,20 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/admin': typeof AuthenticatedAdminRoute
+  '/commons': typeof AuthenticatedCommonsRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/hearth': typeof AuthenticatedHearthRoute
+  '/settings': typeof AuthenticatedSettingsRoute
   '/chat/$id': typeof AuthenticatedChatIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/admin': typeof AuthenticatedAdminRoute
+  '/commons': typeof AuthenticatedCommonsRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/hearth': typeof AuthenticatedHearthRoute
+  '/settings': typeof AuthenticatedSettingsRoute
   '/chat/$id': typeof AuthenticatedChatIdRoute
 }
 export interface FileRoutesById {
@@ -66,21 +90,43 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
+  '/_authenticated/commons': typeof AuthenticatedCommonsRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/hearth': typeof AuthenticatedHearthRoute
+  '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/chat/$id': typeof AuthenticatedChatIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/admin' | '/dashboard' | '/chat/$id'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/admin'
+    | '/commons'
+    | '/dashboard'
+    | '/hearth'
+    | '/settings'
+    | '/chat/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/admin' | '/dashboard' | '/chat/$id'
+  to:
+    | '/'
+    | '/auth'
+    | '/admin'
+    | '/commons'
+    | '/dashboard'
+    | '/hearth'
+    | '/settings'
+    | '/chat/$id'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/auth'
     | '/_authenticated/admin'
+    | '/_authenticated/commons'
     | '/_authenticated/dashboard'
+    | '/_authenticated/hearth'
+    | '/_authenticated/settings'
     | '/_authenticated/chat/$id'
   fileRoutesById: FileRoutesById
 }
@@ -113,11 +159,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/settings': {
+      id: '/_authenticated/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AuthenticatedSettingsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/hearth': {
+      id: '/_authenticated/hearth'
+      path: '/hearth'
+      fullPath: '/hearth'
+      preLoaderRoute: typeof AuthenticatedHearthRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/dashboard': {
       id: '/_authenticated/dashboard'
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/commons': {
+      id: '/_authenticated/commons'
+      path: '/commons'
+      fullPath: '/commons'
+      preLoaderRoute: typeof AuthenticatedCommonsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/admin': {
@@ -139,13 +206,19 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
+  AuthenticatedCommonsRoute: typeof AuthenticatedCommonsRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedHearthRoute: typeof AuthenticatedHearthRoute
+  AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
   AuthenticatedChatIdRoute: typeof AuthenticatedChatIdRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminRoute: AuthenticatedAdminRoute,
+  AuthenticatedCommonsRoute: AuthenticatedCommonsRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedHearthRoute: AuthenticatedHearthRoute,
+  AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
   AuthenticatedChatIdRoute: AuthenticatedChatIdRoute,
 }
 

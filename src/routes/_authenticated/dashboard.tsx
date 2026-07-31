@@ -1,129 +1,59 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
-import { getMe, listConversations, createConversation, deleteConversation } from "@/lib/hearth.functions";
-import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
-import { DoorOpen, DoorClosed, Trash2, Shield } from "lucide-react";
-import { Hearth } from "@/components/Hearth";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { AppShell, useMe } from "@/components/AppShell";
+import { MessageCircle, Users } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
+  head: () => ({
+    meta: [
+      { title: "Dashboard — Fireside AI" },
+      { name: "description", content: "Your fireside hub: choose the Hearth for AI, or the Commons for people." },
+      { property: "og:title", content: "Dashboard — Fireside AI" },
+      { property: "og:description", content: "Your fireside hub: choose the Hearth for AI, or the Commons for people." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
   component: Dashboard,
 });
 
 function Dashboard() {
-  const navigate = useNavigate();
-  const qc = useQueryClient();
-  const getMeFn = useServerFn(getMe);
-  const listFn = useServerFn(listConversations);
-  const createFn = useServerFn(createConversation);
-  const deleteFn = useServerFn(deleteConversation);
-
-  const me = useQuery({ queryKey: ["me"], queryFn: () => getMeFn() });
-  const rooms = useQuery({ queryKey: ["rooms"], queryFn: () => listFn() });
-
-  const create = useMutation({
-    mutationFn: () => createFn({ data: {} }),
-    onSuccess: (r) => {
-      qc.invalidateQueries({ queryKey: ["rooms"] });
-      qc.invalidateQueries({ queryKey: ["me"] });
-      navigate({ to: "/chat/$id", params: { id: r.id } });
-    },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Could not open a new room"),
-  });
-
-  const del = useMutation({
-    mutationFn: (id: string) => deleteFn({ data: { id } }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["rooms"] }); qc.invalidateQueries({ queryKey: ["me"] }); },
-  });
-
-  const signOut = async () => {
-    await qc.cancelQueries();
-    qc.clear();
-    await supabase.auth.signOut();
-    navigate({ to: "/", replace: true });
-  };
-
-  const info = me.data;
+  const me = useMe();
 
   return (
-    <div className="min-h-screen">
-      <header className="border-b border-border/60 bg-card/50 backdrop-blur">
-        <div className="mx-auto max-w-5xl px-6 py-4 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="scale-[0.2] w-[48px] h-[52px] -ml-6 -my-6"><Hearth size="sm" /></div>
-            <div>
-              <p className="serif text-lg leading-none">Hearth</p>
-              <p className="text-xs text-muted-foreground">Welcome, {info?.displayName ?? "…"}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-4 text-xs text-muted-foreground">
-            <span>Rooms: <strong className="text-foreground">{info?.conversationsUsed ?? "…"}</strong></span>
-            {info?.isAdmin && (
-              <Link to="/admin" className="text-primary hover:underline inline-flex items-center gap-1"><Shield className="w-3.5 h-3.5" />Admin</Link>
-            )}
-            <button onClick={signOut} className="hover:text-foreground">Step Outside</button>
-          </div>
-        </div>
-      </header>
-
-      <main className="mx-auto max-w-5xl px-6 py-10">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="serif text-3xl">Your rooms</h1>
-            <p className="text-sm text-muted-foreground mt-1 italic">Open as many as you like. Sit as long as you like.</p>
-          </div>
-          <Button
-            onClick={() => create.mutate()}
-            disabled={create.isPending}
-            className="rounded-full"
-          >
-            <DoorOpen className="w-4 h-4 mr-2" />
-            Open a New Room
-          </Button>
-        </div>
-
-
-        {rooms.isLoading ? (
-          <p className="text-muted-foreground text-sm">Kindling the rooms…</p>
-        ) : rooms.data?.length === 0 ? (
-          <div className="rounded-2xl bg-card warm-border p-12 text-center">
-            <p className="serif italic text-lg text-muted-foreground">
-              You have no rooms yet.<br />Start a conversation — give it a name or let it name itself.
-            </p>
-            <Button onClick={() => create.mutate()} disabled={create.isPending} className="mt-6 rounded-full">
-              <DoorOpen className="w-4 h-4 mr-2" /> Open your first room
-            </Button>
-          </div>
+    <AppShell>
+      <main className="mx-auto max-w-3xl px-6 py-20">
+        {me.isLoading ? (
+          <Skeleton className="mx-auto h-9 w-64" />
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2">
-            {rooms.data?.map((r) => (
-              <div key={r.id} className="group rounded-2xl bg-card warm-border p-6 hover:shadow-md transition-shadow relative">
-                <Link to="/chat/$id" params={{ id: r.id }} className="block">
-                  <div className="flex items-center gap-2 mb-2">
-                    <DoorClosed className="w-4 h-4 text-primary" />
-                    <h3 className="serif text-lg text-foreground truncate">{r.title}</h3>
-                  </div>
-                  <p className="text-sm text-muted-foreground line-clamp-2 min-h-[2.5rem]">
-                    {r.preview || <span className="italic">Empty. Waiting.</span>}
-                  </p>
-                  <p className="text-xs text-muted-foreground/70 mt-3">
-                    Last visited {new Date(r.updatedAt).toLocaleString()}
-                  </p>
-                </Link>
-                <button
-                  onClick={() => { if (confirm("Close this room? The conversation will be lost.")) del.mutate(r.id); }}
-                  className="absolute top-4 right-4 opacity-0 group-hover:opacity-60 hover:!opacity-100 text-muted-foreground hover:text-destructive"
-                  aria-label="Close room"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
-            ))}
-          </div>
+          <h1 className="serif text-center text-3xl text-foreground">
+            Good to see you, {me.data?.displayName ?? "friend"}.
+          </h1>
         )}
+        <p className="mt-3 text-center text-sm italic text-muted-foreground">
+          Nothing to finish here. Just somewhere to sit.
+        </p>
+
+        <div className="mt-14 grid gap-5 sm:grid-cols-2">
+          <Link
+            to="/hearth"
+            className="group rounded-2xl border border-border/60 bg-card p-8 transition-colors hover:border-primary/50"
+          >
+            <MessageCircle className="mb-5 h-6 w-6 text-primary" />
+            <h2 className="serif text-xl">Go to The Hearth</h2>
+            <p className="mt-2 text-sm text-muted-foreground">Talk to AI. Quietly, for as long as you like.</p>
+          </Link>
+
+          <Link
+            to="/commons"
+            className="group rounded-2xl border border-border/60 bg-card p-8 transition-colors hover:border-primary/50"
+          >
+            <Users className="mb-5 h-6 w-6 text-primary" />
+            <h2 className="serif text-xl">Go to The Commons</h2>
+            <p className="mt-2 text-sm text-muted-foreground">Talk to others who are sitting by the fire right now.</p>
+          </Link>
+        </div>
       </main>
-    </div>
+    </AppShell>
   );
 }

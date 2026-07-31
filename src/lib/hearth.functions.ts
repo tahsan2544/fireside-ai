@@ -499,3 +499,38 @@ export const adminDeleteUser = createServerFn({ method: "POST" })
     if (error) throw error;
     return { ok: true };
   });
+
+// ---------- Fireside: single AI room per user ----------
+export const ensureHearthRoom = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+    const { data: existing } = await supabase
+      .from("conversations")
+      .select("id")
+      .eq("user_id", userId)
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (existing) return { id: existing.id };
+    const { data: inserted, error } = await supabase
+      .from("conversations")
+      .insert({ user_id: userId, title: "The Hearth" })
+      .select("id")
+      .single();
+    if (error) throw error;
+    return { id: inserted.id };
+  });
+
+export const updateDisplayName = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ displayName: z.string().min(1).max(40) }).parse(d))
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+    const { error } = await supabase
+      .from("profiles")
+      .update({ display_name: data.displayName.trim() })
+      .eq("id", userId);
+    if (error) throw error;
+    return { ok: true };
+  });

@@ -1,66 +1,114 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { Hearth } from "@/components/Hearth";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { lovable } from "@/integrations/lovable";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
+import { Flame, Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/")({
-  component: Landing,
+  head: () => ({
+    meta: [
+      { title: "Fireside AI — A quiet place. A warm voice." },
+      { name: "description", content: "A minimalist fireside: talk with a gentle AI, or sit with others in the Commons." },
+      { property: "og:title", content: "Fireside AI — A quiet place. A warm voice." },
+      { property: "og:description", content: "A minimalist fireside: talk with a gentle AI, or sit with others in the Commons." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+    ],
+  }),
+  component: Threshold,
 });
 
-function Landing() {
+function Threshold() {
+  const navigate = useNavigate();
+  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) navigate({ to: "/dashboard", replace: true });
+    });
+  }, [navigate]);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      if (mode === "signup") {
+        const { error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            emailRedirectTo: window.location.origin,
+            data: { display_name: name || email.split("@")[0] },
+          },
+        });
+        if (error) throw error;
+        toast.success("Welcome. Pull up a chair.");
+        navigate({ to: "/dashboard" });
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        navigate({ to: "/dashboard" });
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Something went wrong");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const google = async () => {
+    const result = await lovable.auth.signInWithOAuth("google", { redirect_uri: window.location.origin });
+    if (result.error) return toast.error("Could not sign in with Google");
+    if (!result.redirected) navigate({ to: "/dashboard" });
+  };
+
   return (
-    <div className="min-h-screen">
-      {/* Hero */}
-      <section className="relative overflow-hidden">
-        <div className="absolute inset-0 -z-10 hearth-glow-soft" />
-        <div className="mx-auto max-w-3xl px-6 pt-20 pb-16 text-center">
-          <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground mb-8">Hearth AI</p>
-          <div className="mb-10 flex justify-center"><Hearth /></div>
-          <h1 className="serif text-5xl md:text-6xl leading-tight text-foreground">
-            A quiet place.<br />A warm voice.
-          </h1>
-          <p className="serif mt-6 text-lg md:text-xl text-muted-foreground italic max-w-xl mx-auto">
-            No tasks to complete. No productivity to measure.<br />
-            Just someone to talk to, for a little while.
-          </p>
-          <div className="mt-10">
-            <Button asChild size="lg" className="rounded-full px-8 py-6 text-base shadow-lg">
-              <Link to="/auth">Come In, Sit Down</Link>
-            </Button>
-          </div>
+    <main className="flex min-h-screen items-center justify-center bg-background px-6 py-16">
+      <div className="w-full max-w-sm">
+        <div className="mb-10 text-center">
+          <Flame className="mx-auto mb-6 h-7 w-7 text-primary" />
+          <h1 className="serif text-3xl leading-snug text-foreground">A quiet place.<br />A warm voice.</h1>
         </div>
-      </section>
 
-      {/* The Ritual */}
-      <section className="mx-auto max-w-5xl px-6 py-20">
-        <h2 className="serif text-center text-3xl mb-2">The Ritual</h2>
-        <p className="text-center text-sm text-muted-foreground mb-12 italic">Scarcity makes words matter.</p>
-        <div className="grid gap-6 md:grid-cols-3">
-          {[
-            { title: "Ten Conversations", body: "You can open up to 10 chat threads. Like rooms in a house, not infinite tabs." },
-            { title: "Twenty Moments a Day", body: "You can send 20 messages per day. When they're gone, the fire banks for the night." },
-            { title: "Nothing to Achieve", body: "No goals. No productivity. Just talking. That's the whole thing." },
-          ].map((c) => (
-            <div key={c.title} className="rounded-2xl bg-card warm-border p-8">
-              <h3 className="serif text-xl mb-3 text-foreground">{c.title}</h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">{c.body}</p>
+        <form onSubmit={submit} className="space-y-4">
+          {mode === "signup" && (
+            <div>
+              <Label htmlFor="name" className="text-xs text-muted-foreground">Display name</Label>
+              <Input id="name" value={name} onChange={(e) => setName(e.target.value)} className="mt-1" placeholder="What we'll call you" />
             </div>
-          ))}
-        </div>
-      </section>
+          )}
+          <div>
+            <Label htmlFor="email" className="text-xs text-muted-foreground">Email</Label>
+            <Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="mt-1" />
+          </div>
+          <div>
+            <Label htmlFor="password" className="text-xs text-muted-foreground">Password</Label>
+            <Input id="password" type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} className="mt-1" />
+          </div>
+          <Button type="submit" disabled={loading} className="w-full rounded-full">
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : mode === "signin" ? "Sign In" : "Sign Up"}
+          </Button>
+        </form>
 
-      {/* Quote */}
-      <section className="mx-auto max-w-2xl px-6 py-16 text-center">
-        <blockquote className="serif text-2xl md:text-3xl italic text-foreground/80 leading-relaxed">
-          "Sit down. Be quiet. Let the fire do the talking, or don't.<br />
-          Some things don't need to be solved. They need to be sat with."
-        </blockquote>
-      </section>
+        <Button type="button" variant="outline" onClick={google} className="mt-3 w-full rounded-full">
+          Continue with Google
+        </Button>
 
-      <footer className="border-t border-border/50 mt-8">
-        <div className="mx-auto max-w-5xl px-6 py-8 text-center text-xs text-muted-foreground">
-          Made with care. Not for scale.
-        </div>
-      </footer>
-    </div>
+        <p className="mt-6 text-center text-xs text-muted-foreground">
+          {mode === "signin" ? "New here? " : "Already have an account? "}
+          <button type="button" onClick={() => setMode(mode === "signin" ? "signup" : "signin")} className="text-primary hover:underline">
+            {mode === "signin" ? "Sign up" : "Sign in"}
+          </button>
+        </p>
+      </div>
+    </main>
   );
 }
