@@ -8,6 +8,7 @@ import {
   adminDeleteUser,
   adminSeries,
   adminUserDetail,
+  adminSetRole,
   getMe,
 } from "@/lib/hearth.functions";
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+import { AdminSiteSettings, AdminCommonsFeed } from "@/components/AdminPanels";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, ArrowUpDown, Search, Trash2 } from "lucide-react";
 import {
@@ -64,6 +66,7 @@ function Admin() {
   const deleteFn = useServerFn(adminDeleteUser);
   const seriesFn = useServerFn(adminSeries);
   const detailFn = useServerFn(adminUserDetail);
+  const roleFn = useServerFn(adminSetRole);
 
   const [query, setQuery] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("createdAt");
@@ -102,6 +105,17 @@ function Admin() {
       qc.invalidateQueries({ queryKey: ["admin-overview"] });
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Delete failed"),
+  });
+
+  const setRole = useMutation({
+    mutationFn: ({ id, makeAdmin }: { id: string; makeAdmin: boolean }) =>
+      roleFn({ data: { userId: id, makeAdmin } }),
+    onSuccess: () => {
+      toast.success("Roles updated.");
+      qc.invalidateQueries({ queryKey: ["admin-user"] });
+      qc.invalidateQueries({ queryKey: ["admin-users"] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Update failed"),
   });
 
   const rows = useMemo(() => {
@@ -291,6 +305,15 @@ function Admin() {
             </table>
           </div>
         </section>
+        <section>
+          <h2 className="serif text-2xl mb-4">Site settings</h2>
+          <AdminSiteSettings />
+        </section>
+
+        <section>
+          <h2 className="serif text-2xl mb-4">The Commons — moderation</h2>
+          <AdminCommonsFeed />
+        </section>
       </main>
 
       <Sheet open={!!detailId} onOpenChange={(o) => !o && setDetailId(null)}>
@@ -346,6 +369,17 @@ function Admin() {
                   }
                 >
                   {detail.data.profile.suspended ? "Unsuspend" : "Suspend"}
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() =>
+                    setRole.mutate({
+                      id: detail.data!.profile!.id,
+                      makeAdmin: !detail.data!.roles.includes("admin"),
+                    })
+                  }
+                >
+                  {detail.data.roles.includes("admin") ? "Remove admin" : "Make admin"}
                 </Button>
                 <Button
                   variant="destructive"

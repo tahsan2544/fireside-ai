@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { AppShell, useMe } from "@/components/AppShell";
-import { MessageCircle, Users } from "lucide-react";
+import { AppShell, useMe, useSiteSettings, useIsAdmin } from "@/components/AppShell";
+import { MessageCircle, Users, ShieldCheck } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
@@ -19,6 +19,8 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
 
 function Dashboard() {
   const me = useMe();
+  const site = useSiteSettings();
+  const isAdmin = useIsAdmin();
 
   return (
     <AppShell>
@@ -31,7 +33,7 @@ function Dashboard() {
           </h1>
         )}
         <p className="mt-3 text-center text-sm italic text-muted-foreground">
-          Nothing to finish here. Just somewhere to sit.
+          {site.data?.welcome_note ?? "Nothing to finish here. Just somewhere to sit."}
         </p>
 
         <div className="mt-14 grid gap-5 sm:grid-cols-2">
@@ -53,6 +55,19 @@ function Dashboard() {
             <p className="mt-2 text-sm text-muted-foreground">Talk to others who are sitting by the fire right now.</p>
           </Link>
         </div>
+
+        {isAdmin && (
+          <Link
+            to="/admin"
+            className="mt-5 flex items-center gap-3 rounded-2xl border border-primary/40 bg-primary/5 p-6 transition-colors hover:border-primary"
+          >
+            <ShieldCheck className="h-5 w-5 text-primary" />
+            <div>
+              <h2 className="serif text-lg">The Library — Admin</h2>
+              <p className="text-sm text-muted-foreground">People, activity, moderation and every site setting.</p>
+            </div>
+          </Link>
+        )}
       </main>
     </AppShell>
   );

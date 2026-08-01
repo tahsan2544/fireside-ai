@@ -22,7 +22,7 @@ interface ChatMessage {
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 const OPENROUTER_MODEL = "nvidia/nemotron-3-ultra-550b-a55b:free";
 
-async function openRouterChat(messages: ChatMessage[]): Promise<string> {
+async function openRouterChat(messages: ChatMessage[], model = OPENROUTER_MODEL): Promise<string> {
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) throw new Error("OPENROUTER_API_KEY not configured");
 
@@ -32,7 +32,7 @@ async function openRouterChat(messages: ChatMessage[]): Promise<string> {
       "Content-Type": "application/json",
       Authorization: `Bearer ${apiKey}`,
     },
-    body: JSON.stringify({ model: OPENROUTER_MODEL, messages }),
+    body: JSON.stringify({ model, messages }),
   });
 
   if (!res.ok) {
@@ -49,10 +49,16 @@ async function openRouterChat(messages: ChatMessage[]): Promise<string> {
 }
 
 export async function callHearth(
-  history: { role: "user" | "assistant"; content: string; attachments?: StoredAttachment[] }[]
+  history: { role: "user" | "assistant"; content: string; attachments?: StoredAttachment[] }[],
+  options?: { model?: string; extraSystemPrompt?: string }
 ): Promise<string> {
   const messages: ChatMessage[] = [
-    { role: "system", content: SYSTEM_PROMPT },
+    {
+      role: "system",
+      content: options?.extraSystemPrompt?.trim()
+        ? `${SYSTEM_PROMPT}\n\nAdditional guidance from the keeper of this fire:\n${options.extraSystemPrompt.trim()}`
+        : SYSTEM_PROMPT,
+    },
     ...history.map((m) => {
       const atts = m.attachments ?? [];
       if (!atts.length) return { role: m.role, content: m.content };
@@ -65,7 +71,7 @@ export async function callHearth(
 
   ];
 
-  return openRouterChat(messages);
+  return openRouterChat(messages, options?.model || OPENROUTER_MODEL);
 }
 
 

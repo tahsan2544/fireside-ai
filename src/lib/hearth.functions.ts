@@ -4,6 +4,7 @@ import { z } from "zod";
 
 // ---------- Types ----------
 export interface UsageInfo {
+  userId: string;
   messagesUsed: number;
   conversationsUsed: number;
   isAdmin: boolean;
@@ -34,6 +35,7 @@ export const getMe = createServerFn({ method: "GET" })
     ]);
 
     return {
+      userId,
       messagesUsed: usage?.message_count ?? 0,
       conversationsUsed: convoCount ?? 0,
       isAdmin: !!roleRow,
@@ -70,6 +72,14 @@ export const createConversation = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => z.object({ title: z.string().min(1).max(80).optional() }).parse(d))
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
+    await assertActive(supabase, userId);
+    const settings = await readSettings(supabase);
+    if (settings.max_conversations > 0) {
+      const { count } = await supabase.from("conversations").select("*", { count: "exact", head: true }).eq("user_id", userId);
+      if ((count ?? 0) >= settings.max_conversations) {
+        throw new Error(`You've opened all ${settings.max_conversations} of your rooms. Close one to open another.`);
+      }
+    }
     const { data: inserted, error } = await supabase
       .from("conversations")
       .insert({ user_id: userId, title: data.title ?? "A Quiet Room" })
@@ -78,6 +88,7 @@ export const createConversation = createServerFn({ method: "POST" })
     if (error) throw error;
     return { id: inserted.id };
   });
+
 
 export const getConversation = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -169,6 +180,16 @@ export const sendMessage = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
     if (!data.content.trim() && data.attachments.length === 0) throw new Error("Say something, or attach something.");
+    await assertActive(supabase, userId);
+    const settings = await readSettings(supabase);
+    if (settings.maintenance_mode) throw new Error("The fire is being tended. Back shortly.");
+    if (settings.max_daily_messages > 0) {
+      const { data: today0 } = await supabase
+        .from("daily_usage").select("message_count").eq("user_id", userId).eq("date", todayUTC()).maybeSingle();
+      if ((today0?.message_count ?? 0) >= settings.max_daily_messages) {
+        throw new Error(`That's your ${settings.max_daily_messages} words for today. Come back tomorrow.`);
+      }
+    }
 
     const { data: convo } = await supabase.from("conversations").select("id, user_id, title").eq("id", data.conversationId).maybeSingle();
     if (!convo || convo.user_id !== userId) throw new Error("Room not found");
@@ -196,7 +217,8 @@ export const sendMessage = createServerFn({ method: "POST" })
         role: m.role as "user" | "assistant",
         content: m.content,
         attachments: (m.attachments ?? []) as any,
-      }))
+      })),
+      { model: settings.ai_model, extraSystemPrompt: settings.system_prompt }
     );
 
     const { data: assistantRow, error: aErr } = await supabase
@@ -233,6 +255,8 @@ export const generateImage = createServerFn({ method: "POST" })
     const { data: convo } = await supabase.from("conversations").select("user_id").eq("id", data.conversationId).maybeSingle();
     if (!convo || convo.user_id !== userId) throw new Error("Room not found");
 
+    await assertActive(supabase, userId);
+    if (!(await readSettings(supabase)).image_gen_enabled) throw new Error("Image making is off right now.");
     const { generateHearthImage } = await import("./hearth.server");
     const { base64, mimeType } = await generateHearthImage(data.prompt);
 
@@ -276,6 +300,8 @@ export const generateDocument = createServerFn({ method: "POST" })
     const { data: convo } = await supabase.from("conversations").select("user_id").eq("id", data.conversationId).maybeSingle();
     if (!convo || convo.user_id !== userId) throw new Error("Room not found");
 
+    await assertActive(supabase, userId);
+    if (!(await readSettings(supabase)).doc_gen_enabled) throw new Error("Document making is off right now.");
     const { generateHearthDocument } = await import("./hearth.server");
     const markdown = await generateHearthDocument(data.prompt);
 
@@ -387,6 +413,8 @@ export const voiceTurn = createServerFn({ method: "POST" })
     const { data: convo } = await supabase.from("conversations").select("user_id").eq("id", data.conversationId).maybeSingle();
     if (!convo || convo.user_id !== userId) throw new Error("Room not found");
 
+    await assertActive(supabase, userId);
+    if (!(await readSettings(supabase)).voice_enabled) throw new Error("Voice is resting right now.");
     const { transcribeAudio, speakText, callHearth } = await import("./hearth.server");
     const bytes = Buffer.from(data.audioBase64, "base64");
     const transcript = await transcribeAudio(new Uint8Array(bytes), data.mimeType);
@@ -531,6 +559,140 @@ export const updateDisplayName = createServerFn({ method: "POST" })
       .from("profiles")
       .update({ display_name: data.displayName.trim() })
       .eq("id", userId);
+    if (error) throw error;
+    return { ok: true };
+  });
+
+// ---------- Shared gates ----------
+export interface SiteSettings {
+  site_name: string;
+  tagline: string;
+  welcome_note: string;
+  announcement: string;
+  signups_enabled: boolean;
+  maintenance_mode: boolean;
+  commons_enabled: boolean;
+  voice_enabled: boolean;
+  image_gen_enabled: boolean;
+  doc_gen_enabled: boolean;
+  ai_model: string;
+  system_prompt: string;
+  max_daily_messages: number;
+  max_conversations: number;
+}
+
+const SETTINGS_DEFAULTS: SiteSettings = {
+  site_name: "Fireside AI",
+  tagline: "A quiet place. A warm voice.",
+  welcome_note: "Pull up a chair. The fire is already lit.",
+  announcement: "",
+  signups_enabled: true,
+  maintenance_mode: false,
+  commons_enabled: true,
+  voice_enabled: true,
+  image_gen_enabled: true,
+  doc_gen_enabled: true,
+  ai_model: "nvidia/nemotron-3-ultra-550b-a55b:free",
+  system_prompt: "",
+  max_daily_messages: 0,
+  max_conversations: 0,
+};
+
+async function readSettings(supabase: any): Promise<SiteSettings> {
+  const { data } = await supabase.from("site_settings").select("*").eq("id", true).maybeSingle();
+  return { ...SETTINGS_DEFAULTS, ...(data ?? {}) } as SiteSettings;
+}
+
+async function assertActive(supabase: any, userId: string) {
+  const { data } = await supabase.from("profiles").select("suspended").eq("id", userId).maybeSingle();
+  if (data?.suspended) throw new Error("Your seat by the fire has been paused. Reach out if this seems wrong.");
+}
+
+// ---------- Site settings ----------
+export const getSiteSettings = createServerFn({ method: "GET" }).handler(async (): Promise<SiteSettings> => {
+  const { createClient } = await import("@supabase/supabase-js");
+  const key = process.env["SUPABASE_PUBLISHABLE_KEY"] ?? process.env["SUPABASE_ANON_KEY"]!;
+  const client = createClient(process.env["SUPABASE_URL"]!, key, {
+    auth: { persistSession: false, autoRefreshToken: false },
+    global: {
+      fetch: (input: any, init?: any) => {
+        const h = new Headers(init?.headers);
+        if (key.startsWith("sb_") && h.get("Authorization") === `Bearer ${key}`) h.delete("Authorization");
+        h.set("apikey", key);
+        return fetch(input, { ...init, headers: h });
+      },
+    },
+  });
+  return readSettings(client);
+});
+
+export const adminUpdateSiteSettings = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({
+      site_name: z.string().min(1).max(60),
+      tagline: z.string().max(140),
+      welcome_note: z.string().max(300),
+      announcement: z.string().max(300),
+      signups_enabled: z.boolean(),
+      maintenance_mode: z.boolean(),
+      commons_enabled: z.boolean(),
+      voice_enabled: z.boolean(),
+      image_gen_enabled: z.boolean(),
+      doc_gen_enabled: z.boolean(),
+      ai_model: z.string().min(1).max(120),
+      system_prompt: z.string().max(4000),
+      max_daily_messages: z.number().int().min(0).max(10000),
+      max_conversations: z.number().int().min(0).max(1000),
+    }).parse(d)
+  )
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+    await assertAdmin(supabase, userId);
+    const { error } = await supabase.from("site_settings").update(data).eq("id", true);
+    if (error) throw error;
+    return { ok: true };
+  });
+
+// ---------- Admin: roles & commons moderation ----------
+export const adminSetRole = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ userId: z.string().uuid(), makeAdmin: z.boolean() }).parse(d))
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+    await assertAdmin(supabase, userId);
+    if (data.userId === userId && !data.makeAdmin) throw new Error("You can't remove your own admin rights.");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    if (data.makeAdmin) {
+      const { error } = await supabaseAdmin.from("user_roles").insert({ user_id: data.userId, role: "admin" });
+      if (error && !error.message.includes("duplicate")) throw error;
+    } else {
+      const { error } = await supabaseAdmin.from("user_roles").delete().eq("user_id", data.userId).eq("role", "admin");
+      if (error) throw error;
+    }
+    return { ok: true };
+  });
+
+export const adminCommonsFeed = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+    await assertAdmin(supabase, userId);
+    const { data } = await supabase
+      .from("commons_messages")
+      .select("id, display_name, content, created_at, user_id")
+      .order("created_at", { ascending: false })
+      .limit(100);
+    return data ?? [];
+  });
+
+export const adminDeleteCommonsMessage = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+    await assertAdmin(supabase, userId);
+    const { error } = await supabase.from("commons_messages").delete().eq("id", data.id);
     if (error) throw error;
     return { ok: true };
   });
