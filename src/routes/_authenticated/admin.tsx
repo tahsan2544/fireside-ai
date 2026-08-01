@@ -8,6 +8,7 @@ import {
   adminDeleteUser,
   adminSeries,
   adminUserDetail,
+  adminSetRole,
   getMe,
 } from "@/lib/hearth.functions";
 import { Button } from "@/components/ui/button";
@@ -65,6 +66,7 @@ function Admin() {
   const deleteFn = useServerFn(adminDeleteUser);
   const seriesFn = useServerFn(adminSeries);
   const detailFn = useServerFn(adminUserDetail);
+  const roleFn = useServerFn(adminSetRole);
 
   const [query, setQuery] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("createdAt");
@@ -103,6 +105,17 @@ function Admin() {
       qc.invalidateQueries({ queryKey: ["admin-overview"] });
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Delete failed"),
+  });
+
+  const setRole = useMutation({
+    mutationFn: ({ id, makeAdmin }: { id: string; makeAdmin: boolean }) =>
+      roleFn({ data: { userId: id, makeAdmin } }),
+    onSuccess: () => {
+      toast.success("Roles updated.");
+      qc.invalidateQueries({ queryKey: ["admin-user"] });
+      qc.invalidateQueries({ queryKey: ["admin-users"] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Update failed"),
   });
 
   const rows = useMemo(() => {
@@ -356,6 +369,17 @@ function Admin() {
                   }
                 >
                   {detail.data.profile.suspended ? "Unsuspend" : "Suspend"}
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() =>
+                    setRole.mutate({
+                      id: detail.data!.profile!.id,
+                      makeAdmin: !detail.data!.roles.includes("admin"),
+                    })
+                  }
+                >
+                  {detail.data.roles.includes("admin") ? "Remove admin" : "Make admin"}
                 </Button>
                 <Button
                   variant="destructive"
