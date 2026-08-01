@@ -215,7 +215,8 @@ export const sendMessage = createServerFn({ method: "POST" })
         role: m.role as "user" | "assistant",
         content: m.content,
         attachments: (m.attachments ?? []) as any,
-      }))
+      })),
+      { model: settings.ai_model, extraSystemPrompt: settings.system_prompt }
     );
 
     const { data: assistantRow, error: aErr } = await supabase

@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Flame, LayoutGrid, MessageCircle, Users, Settings as SettingsIcon, ShieldCheck, LogOut } from "lucide-react";
 import type { ReactNode } from "react";
 
-export const ADMIN_EMAIL = "tarifulislam2544@gamil.com";
+export const ADMIN_EMAIL = "tarifulislam2544@gmail.com";
 
 const links = [
   { to: "/dashboard", label: "The Dashboard", icon: LayoutGrid },
