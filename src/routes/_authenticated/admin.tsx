@@ -24,6 +24,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+import { AdminSiteSettings, AdminCommonsFeed } from "@/components/AdminPanels";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, ArrowUpDown, Search, Trash2 } from "lucide-react";
 import {
@@ -290,6 +291,15 @@ function Admin() {
               </tbody>
             </table>
           </div>
+        </section>
+        <section>
+          <h2 className="serif text-2xl mb-4">Site settings</h2>
+          <AdminSiteSettings />
+        </section>
+
+        <section>
+          <h2 className="serif text-2xl mb-4">The Commons — moderation</h2>
+          <AdminCommonsFeed />
         </section>
       </main>
 

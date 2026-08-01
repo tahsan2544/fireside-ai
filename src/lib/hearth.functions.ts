@@ -4,6 +4,7 @@ import { z } from "zod";
 
 // ---------- Types ----------
 export interface UsageInfo {
+  userId: string;
   messagesUsed: number;
   conversationsUsed: number;
   isAdmin: boolean;
@@ -34,6 +35,7 @@ export const getMe = createServerFn({ method: "GET" })
     ]);
 
     return {
+      userId,
       messagesUsed: usage?.message_count ?? 0,
       conversationsUsed: convoCount ?? 0,
       isAdmin: !!roleRow,
