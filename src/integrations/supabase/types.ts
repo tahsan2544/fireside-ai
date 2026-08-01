@@ -35,6 +35,30 @@ export type Database = {
         }
         Relationships: []
       }
+      commons_messages: {
+        Row: {
+          content: string
+          created_at: string
+          display_name: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          display_name: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          display_name?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       conversations: {
         Row: {
           created_at: string
@@ -142,6 +166,66 @@ export type Database = {
         }
         Relationships: []
       }
+      site_settings: {
+        Row: {
+          ai_model: string
+          announcement: string
+          commons_enabled: boolean
+          created_at: string
+          doc_gen_enabled: boolean
+          id: boolean
+          image_gen_enabled: boolean
+          maintenance_mode: boolean
+          max_conversations: number
+          max_daily_messages: number
+          signups_enabled: boolean
+          site_name: string
+          system_prompt: string
+          tagline: string
+          updated_at: string
+          voice_enabled: boolean
+          welcome_note: string
+        }
+        Insert: {
+          ai_model?: string
+          announcement?: string
+          commons_enabled?: boolean
+          created_at?: string
+          doc_gen_enabled?: boolean
+          id?: boolean
+          image_gen_enabled?: boolean
+          maintenance_mode?: boolean
+          max_conversations?: number
+          max_daily_messages?: number
+          signups_enabled?: boolean
+          site_name?: string
+          system_prompt?: string
+          tagline?: string
+          updated_at?: string
+          voice_enabled?: boolean
+          welcome_note?: string
+        }
+        Update: {
+          ai_model?: string
+          announcement?: string
+          commons_enabled?: boolean
+          created_at?: string
+          doc_gen_enabled?: boolean
+          id?: boolean
+          image_gen_enabled?: boolean
+          maintenance_mode?: boolean
+          max_conversations?: number
+          max_daily_messages?: number
+          signups_enabled?: boolean
+          site_name?: string
+          system_prompt?: string
+          tagline?: string
+          updated_at?: string
+          voice_enabled?: boolean
+          welcome_note?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -175,6 +259,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_suspended: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
       app_role: "admin" | "user"
