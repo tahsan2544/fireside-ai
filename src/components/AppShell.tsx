@@ -1,7 +1,7 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { getMe } from "@/lib/hearth.functions";
+import { getMe, getSiteSettings } from "@/lib/hearth.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { Flame, LayoutGrid, MessageCircle, Users, Settings as SettingsIcon, ShieldCheck, LogOut } from "lucide-react";
 import type { ReactNode } from "react";
@@ -20,12 +20,23 @@ export function useMe() {
   return useQuery({ queryKey: ["me"], queryFn: () => getMeFn() });
 }
 
+export function useSiteSettings() {
+  const fn = useServerFn(getSiteSettings);
+  return useQuery({ queryKey: ["site-settings"], queryFn: () => fn(), staleTime: 60_000 });
+}
+
+export function useIsAdmin() {
+  const me = useMe();
+  return !!me.data && (me.data.isAdmin || me.data.email?.toLowerCase() === ADMIN_EMAIL);
+}
+
 export function AppShell({ children }: { children: ReactNode }) {
   const me = useMe();
+  const site = useSiteSettings();
   const navigate = useNavigate();
   const qc = useQueryClient();
 
-  const isAdmin = me.data?.email?.toLowerCase() === ADMIN_EMAIL;
+  const isAdmin = !!me.data && (me.data.isAdmin || me.data.email?.toLowerCase() === ADMIN_EMAIL);
 
   const signOut = async () => {
     await qc.cancelQueries();
@@ -36,11 +47,11 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-20 border-b border-border/50 bg-background/80 backdrop-blur">
+      <header className="sticky top-0 z-20 border-b border-border/60 bg-background/85 backdrop-blur">
         <nav className="mx-auto flex max-w-5xl flex-wrap items-center gap-x-1 gap-y-2 px-5 py-3">
           <Link to="/dashboard" className="mr-4 flex items-center gap-2">
             <Flame className="h-4 w-4 text-primary" />
-            <span className="serif text-base">Fireside</span>
+            <span className="serif text-base">{site.data?.site_name ?? "Fireside"}</span>
           </Link>
 
           {links.map((l) => (
@@ -61,6 +72,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           {isAdmin && (
             <Link
               to="/admin"
+              activeProps={{ className: "bg-accent/60" }}
               className="rounded-full px-3 py-1.5 text-xs text-primary transition-colors hover:bg-accent/60"
             >
               <span className="inline-flex items-center gap-1.5">
@@ -78,6 +90,11 @@ export function AppShell({ children }: { children: ReactNode }) {
             Log out
           </button>
         </nav>
+        {site.data?.announcement ? (
+          <div className="border-t border-border/60 bg-accent/40 px-5 py-2 text-center text-xs text-accent-foreground">
+            {site.data.announcement}
+          </div>
+        ) : null}
       </header>
       {children}
     </div>
