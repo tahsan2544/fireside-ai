@@ -70,6 +70,14 @@ export const createConversation = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => z.object({ title: z.string().min(1).max(80).optional() }).parse(d))
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
+    await assertActive(supabase, userId);
+    const settings = await readSettings(supabase);
+    if (settings.max_conversations > 0) {
+      const { count } = await supabase.from("conversations").select("*", { count: "exact", head: true }).eq("user_id", userId);
+      if ((count ?? 0) >= settings.max_conversations) {
+        throw new Error(`You've opened all ${settings.max_conversations} of your rooms. Close one to open another.`);
+      }
+    }
     const { data: inserted, error } = await supabase
       .from("conversations")
       .insert({ user_id: userId, title: data.title ?? "A Quiet Room" })
@@ -78,6 +86,7 @@ export const createConversation = createServerFn({ method: "POST" })
     if (error) throw error;
     return { id: inserted.id };
   });
+
 
 export const getConversation = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
