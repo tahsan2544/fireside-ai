@@ -628,6 +628,11 @@ export interface SiteSettings {
   system_prompt: string;
   max_daily_messages: number;
   max_conversations: number;
+  free_daily_messages: number;
+  free_daily_voice_seconds: number;
+  journal_enabled: boolean;
+  memory_enabled: boolean;
+  quiet_rooms_enabled: boolean;
 }
 
 const SETTINGS_DEFAULTS: SiteSettings = {
@@ -645,6 +650,11 @@ const SETTINGS_DEFAULTS: SiteSettings = {
   system_prompt: "",
   max_daily_messages: 0,
   max_conversations: 0,
+  free_daily_messages: 30,
+  free_daily_voice_seconds: 300,
+  journal_enabled: true,
+  memory_enabled: true,
+  quiet_rooms_enabled: true,
 };
 
 async function readSettings(supabase: any): Promise<SiteSettings> {
