@@ -13,6 +13,8 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
+import { Route as AuthenticatedMemoryRouteImport } from './routes/_authenticated/memory'
+import { Route as AuthenticatedJournalRouteImport } from './routes/_authenticated/journal'
 import { Route as AuthenticatedHearthRouteImport } from './routes/_authenticated/hearth'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedCommonsRouteImport } from './routes/_authenticated/commons'
@@ -36,6 +38,16 @@ const IndexRoute = IndexRouteImport.update({
 const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedMemoryRoute = AuthenticatedMemoryRouteImport.update({
+  id: '/memory',
+  path: '/memory',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedJournalRoute = AuthenticatedJournalRouteImport.update({
+  id: '/journal',
+  path: '/journal',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedHearthRoute = AuthenticatedHearthRouteImport.update({
@@ -71,6 +83,8 @@ export interface FileRoutesByFullPath {
   '/commons': typeof AuthenticatedCommonsRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/hearth': typeof AuthenticatedHearthRoute
+  '/journal': typeof AuthenticatedJournalRoute
+  '/memory': typeof AuthenticatedMemoryRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/chat/$id': typeof AuthenticatedChatIdRoute
 }
@@ -81,6 +95,8 @@ export interface FileRoutesByTo {
   '/commons': typeof AuthenticatedCommonsRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/hearth': typeof AuthenticatedHearthRoute
+  '/journal': typeof AuthenticatedJournalRoute
+  '/memory': typeof AuthenticatedMemoryRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/chat/$id': typeof AuthenticatedChatIdRoute
 }
@@ -93,6 +109,8 @@ export interface FileRoutesById {
   '/_authenticated/commons': typeof AuthenticatedCommonsRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/hearth': typeof AuthenticatedHearthRoute
+  '/_authenticated/journal': typeof AuthenticatedJournalRoute
+  '/_authenticated/memory': typeof AuthenticatedMemoryRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/chat/$id': typeof AuthenticatedChatIdRoute
 }
@@ -105,6 +123,8 @@ export interface FileRouteTypes {
     | '/commons'
     | '/dashboard'
     | '/hearth'
+    | '/journal'
+    | '/memory'
     | '/settings'
     | '/chat/$id'
   fileRoutesByTo: FileRoutesByTo
@@ -115,6 +135,8 @@ export interface FileRouteTypes {
     | '/commons'
     | '/dashboard'
     | '/hearth'
+    | '/journal'
+    | '/memory'
     | '/settings'
     | '/chat/$id'
   id:
@@ -126,6 +148,8 @@ export interface FileRouteTypes {
     | '/_authenticated/commons'
     | '/_authenticated/dashboard'
     | '/_authenticated/hearth'
+    | '/_authenticated/journal'
+    | '/_authenticated/memory'
     | '/_authenticated/settings'
     | '/_authenticated/chat/$id'
   fileRoutesById: FileRoutesById
@@ -164,6 +188,20 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof AuthenticatedSettingsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/memory': {
+      id: '/_authenticated/memory'
+      path: '/memory'
+      fullPath: '/memory'
+      preLoaderRoute: typeof AuthenticatedMemoryRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/journal': {
+      id: '/_authenticated/journal'
+      path: '/journal'
+      fullPath: '/journal'
+      preLoaderRoute: typeof AuthenticatedJournalRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/hearth': {
@@ -209,6 +247,8 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedCommonsRoute: typeof AuthenticatedCommonsRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedHearthRoute: typeof AuthenticatedHearthRoute
+  AuthenticatedJournalRoute: typeof AuthenticatedJournalRoute
+  AuthenticatedMemoryRoute: typeof AuthenticatedMemoryRoute
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
   AuthenticatedChatIdRoute: typeof AuthenticatedChatIdRoute
 }
@@ -218,6 +258,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCommonsRoute: AuthenticatedCommonsRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedHearthRoute: AuthenticatedHearthRoute,
+  AuthenticatedJournalRoute: AuthenticatedJournalRoute,
+  AuthenticatedMemoryRoute: AuthenticatedMemoryRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
   AuthenticatedChatIdRoute: AuthenticatedChatIdRoute,
 }
@@ -233,13 +275,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

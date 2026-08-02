@@ -35,12 +35,34 @@ export type Database = {
         }
         Relationships: []
       }
+      commons_blocks: {
+        Row: {
+          blocked_user_id: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          blocked_user_id: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          blocked_user_id?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       commons_messages: {
         Row: {
           content: string
           created_at: string
           display_name: string
           id: string
+          room_slug: string
           user_id: string
         }
         Insert: {
@@ -48,6 +70,7 @@ export type Database = {
           created_at?: string
           display_name: string
           id?: string
+          room_slug?: string
           user_id: string
         }
         Update: {
@@ -55,7 +78,59 @@ export type Database = {
           created_at?: string
           display_name?: string
           id?: string
+          room_slug?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      commons_reports: {
+        Row: {
+          created_at: string
+          id: string
+          message_id: string
+          reason: string
+          reporter_id: string
+          resolved: boolean
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message_id: string
+          reason?: string
+          reporter_id: string
+          resolved?: boolean
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message_id?: string
+          reason?: string
+          reporter_id?: string
+          resolved?: boolean
+        }
+        Relationships: []
+      }
+      commons_rooms: {
+        Row: {
+          created_at: string
+          description: string
+          name: string
+          slug: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          description?: string
+          name: string
+          slug: string
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          name?: string
+          slug?: string
+          sort_order?: number
         }
         Relationships: []
       }
@@ -89,17 +164,83 @@ export type Database = {
           id: string
           message_count: number
           user_id: string
+          voice_seconds: number
         }
         Insert: {
           date?: string
           id?: string
           message_count?: number
           user_id: string
+          voice_seconds?: number
         }
         Update: {
           date?: string
           id?: string
           message_count?: number
+          user_id?: string
+          voice_seconds?: number
+        }
+        Relationships: []
+      }
+      journal_entries: {
+        Row: {
+          content: string
+          created_at: string
+          entry_date: string
+          id: string
+          mood: number | null
+          prompt: string
+          reflection: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          entry_date?: string
+          id?: string
+          mood?: number | null
+          prompt?: string
+          reflection?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          entry_date?: string
+          id?: string
+          mood?: number | null
+          prompt?: string
+          reflection?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      memory_facts: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          kind: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          kind?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          kind?: string
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
@@ -112,6 +253,7 @@ export type Database = {
           created_at: string
           id: string
           role: string
+          via: string
         }
         Insert: {
           attachments?: Json
@@ -120,6 +262,7 @@ export type Database = {
           created_at?: string
           id?: string
           role: string
+          via?: string
         }
         Update: {
           attachments?: Json
@@ -128,6 +271,7 @@ export type Database = {
           created_at?: string
           id?: string
           role?: string
+          via?: string
         }
         Relationships: [
           {
@@ -141,28 +285,43 @@ export type Database = {
       }
       profiles: {
         Row: {
+          age_confirmed: boolean
           created_at: string
           display_name: string | null
           email: string | null
           id: string
           last_active_at: string
+          memory_enabled: boolean
+          plan: string
+          reflection_optin: boolean
           suspended: boolean
+          voice_id: string
         }
         Insert: {
+          age_confirmed?: boolean
           created_at?: string
           display_name?: string | null
           email?: string | null
           id: string
           last_active_at?: string
+          memory_enabled?: boolean
+          plan?: string
+          reflection_optin?: boolean
           suspended?: boolean
+          voice_id?: string
         }
         Update: {
+          age_confirmed?: boolean
           created_at?: string
           display_name?: string | null
           email?: string | null
           id?: string
           last_active_at?: string
+          memory_enabled?: boolean
+          plan?: string
+          reflection_optin?: boolean
           suspended?: boolean
+          voice_id?: string
         }
         Relationships: []
       }
@@ -173,11 +332,16 @@ export type Database = {
           commons_enabled: boolean
           created_at: string
           doc_gen_enabled: boolean
+          free_daily_messages: number
+          free_daily_voice_seconds: number
           id: boolean
           image_gen_enabled: boolean
+          journal_enabled: boolean
           maintenance_mode: boolean
           max_conversations: number
           max_daily_messages: number
+          memory_enabled: boolean
+          quiet_rooms_enabled: boolean
           signups_enabled: boolean
           site_name: string
           system_prompt: string
@@ -192,11 +356,16 @@ export type Database = {
           commons_enabled?: boolean
           created_at?: string
           doc_gen_enabled?: boolean
+          free_daily_messages?: number
+          free_daily_voice_seconds?: number
           id?: boolean
           image_gen_enabled?: boolean
+          journal_enabled?: boolean
           maintenance_mode?: boolean
           max_conversations?: number
           max_daily_messages?: number
+          memory_enabled?: boolean
+          quiet_rooms_enabled?: boolean
           signups_enabled?: boolean
           site_name?: string
           system_prompt?: string
@@ -211,11 +380,16 @@ export type Database = {
           commons_enabled?: boolean
           created_at?: string
           doc_gen_enabled?: boolean
+          free_daily_messages?: number
+          free_daily_voice_seconds?: number
           id?: boolean
           image_gen_enabled?: boolean
+          journal_enabled?: boolean
           maintenance_mode?: boolean
           max_conversations?: number
           max_daily_messages?: number
+          memory_enabled?: boolean
+          quiet_rooms_enabled?: boolean
           signups_enabled?: boolean
           site_name?: string
           system_prompt?: string
@@ -223,6 +397,45 @@ export type Database = {
           updated_at?: string
           voice_enabled?: boolean
           welcome_note?: string
+        }
+        Relationships: []
+      }
+      subscriptions: {
+        Row: {
+          created_at: string
+          current_period_end: string | null
+          id: string
+          plan: string
+          provider: string | null
+          provider_customer_id: string | null
+          provider_subscription_id: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          current_period_end?: string | null
+          id?: string
+          plan?: string
+          provider?: string | null
+          provider_customer_id?: string | null
+          provider_subscription_id?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          current_period_end?: string | null
+          id?: string
+          plan?: string
+          provider?: string | null
+          provider_customer_id?: string | null
+          provider_subscription_id?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -246,6 +459,41 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      voice_sessions: {
+        Row: {
+          conversation_id: string | null
+          created_at: string
+          id: string
+          seconds: number
+          turns: number
+          user_id: string
+        }
+        Insert: {
+          conversation_id?: string | null
+          created_at?: string
+          id?: string
+          seconds?: number
+          turns?: number
+          user_id: string
+        }
+        Update: {
+          conversation_id?: string | null
+          created_at?: string
+          id?: string
+          seconds?: number
+          turns?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "voice_sessions_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

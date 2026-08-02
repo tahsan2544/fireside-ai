@@ -183,12 +183,33 @@ export const sendMessage = createServerFn({ method: "POST" })
     await assertActive(supabase, userId);
     const settings = await readSettings(supabase);
     if (settings.maintenance_mode) throw new Error("The fire is being tended. Back shortly.");
-    if (settings.max_daily_messages > 0) {
-      const { data: today0 } = await supabase
-        .from("daily_usage").select("message_count").eq("user_id", userId).eq("date", todayUTC()).maybeSingle();
-      if ((today0?.message_count ?? 0) >= settings.max_daily_messages) {
-        throw new Error(`That's your ${settings.max_daily_messages} words for today. Come back tomorrow.`);
-      }
+
+    const { checkSafety } = await import("./safety");
+    const safety = checkSafety(data.content);
+    if (safety.blocked) throw new Error(safety.reason!);
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("plan, memory_enabled")
+      .eq("id", userId)
+      .maybeSingle();
+    const plan = profile?.plan ?? "free";
+    const dailyCap =
+      settings.max_daily_messages > 0
+        ? settings.max_daily_messages
+        : plan === "free"
+          ? (settings.free_daily_messages ?? 30)
+          : 0;
+    const { data: today0 } = await supabase
+      .from("daily_usage")
+      .select("id, message_count")
+      .eq("user_id", userId)
+      .eq("date", todayUTC())
+      .maybeSingle();
+    if (dailyCap > 0 && (today0?.message_count ?? 0) >= dailyCap) {
+      throw new Error(
+        `That's ${dailyCap} messages today on the free hearth. Come back tomorrow, or open the door wider from Pricing.`
+      );
     }
 
     const { data: convo } = await supabase.from("conversations").select("id, user_id, title").eq("id", data.conversationId).maybeSingle();
@@ -211,6 +232,8 @@ export const sendMessage = createServerFn({ method: "POST" })
       .order("created_at", { ascending: true })
       .limit(40);
 
+    const memories = profile?.memory_enabled === false ? [] : await readMemories(supabase, userId);
+
     const { callHearth } = await import("./hearth.server");
     const assistantContent = await callHearth(
       (recent ?? []).map((m: any) => ({
@@ -218,7 +241,7 @@ export const sendMessage = createServerFn({ method: "POST" })
         content: m.content,
         attachments: (m.attachments ?? []) as any,
       })),
-      { model: settings.ai_model, extraSystemPrompt: settings.system_prompt }
+      { model: settings.ai_model, extraSystemPrompt: settings.system_prompt, memories, crisis: safety.crisis }
     );
 
     const { data: assistantRow, error: aErr } = await supabase
@@ -234,17 +257,43 @@ export const sendMessage = createServerFn({ method: "POST" })
     }
     await supabase.from("conversations").update(updates).eq("id", data.conversationId);
 
-    // Track usage (no enforcement — just analytics)
-    const today = todayUTC();
-    const { data: usage } = await supabase.from("daily_usage").select("id, message_count").eq("user_id", userId).eq("date", today).maybeSingle();
-    if (usage) {
-      await supabase.from("daily_usage").update({ message_count: usage.message_count + 1 }).eq("id", usage.id);
+    // Track usage
+    if (today0) {
+      await supabase.from("daily_usage").update({ message_count: today0.message_count + 1 }).eq("id", today0.id);
     } else {
-      await supabase.from("daily_usage").insert({ user_id: userId, date: today, message_count: 1 });
+      await supabase.from("daily_usage").insert({ user_id: userId, date: todayUTC(), message_count: 1 });
     }
 
-    return { assistant: assistantRow };
+    // Remember durable details (opt-out via settings), never crisis content
+    if (profile?.memory_enabled !== false && !safety.crisis && data.content.trim().length > 25) {
+      await rememberFrom(supabase, userId, `${data.content}\n\nCompanion replied: ${assistantContent}`, memories);
+    }
+
+    return { assistant: assistantRow, crisis: safety.crisis };
   });
+
+async function readMemories(supabase: any, userId: string): Promise<string[]> {
+  const { data } = await supabase
+    .from("memory_facts")
+    .select("content")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(30);
+  return (data ?? []).map((m: { content: string }) => m.content);
+}
+
+async function rememberFrom(supabase: any, userId: string, snippet: string, existing: string[]) {
+  try {
+    const { extractMemories } = await import("./fireside.server");
+    const facts = await extractMemories(snippet);
+    const lower = existing.map((e) => e.toLowerCase());
+    const fresh = facts.filter((f) => !lower.some((e) => e.includes(f.toLowerCase()) || f.toLowerCase().includes(e)));
+    if (!fresh.length) return;
+    await supabase.from("memory_facts").insert(fresh.map((content) => ({ user_id: userId, content, kind: "chat" })));
+  } catch {
+    /* memory is a nicety, never a blocker */
+  }
+}
 
 // ---------- Generate image ----------
 export const generateImage = createServerFn({ method: "POST" })
@@ -406,6 +455,7 @@ export const voiceTurn = createServerFn({ method: "POST" })
       conversationId: z.string().uuid(),
       audioBase64: z.string().min(16),
       mimeType: z.string().min(3).max(80).default("audio/webm"),
+      seconds: z.number().int().min(0).max(600).default(0),
     }).parse(d)
   )
   .handler(async ({ context, data }) => {
@@ -414,16 +464,41 @@ export const voiceTurn = createServerFn({ method: "POST" })
     if (!convo || convo.user_id !== userId) throw new Error("Room not found");
 
     await assertActive(supabase, userId);
-    if (!(await readSettings(supabase)).voice_enabled) throw new Error("Voice is resting right now.");
+    const settings = await readSettings(supabase);
+    if (!settings.voice_enabled) throw new Error("Voice is resting right now.");
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("plan, voice_id, memory_enabled")
+      .eq("id", userId)
+      .maybeSingle();
+    const plan = profile?.plan ?? "free";
+    const today = todayUTC();
+    const { data: usageRow } = await supabase
+      .from("daily_usage")
+      .select("id, message_count, voice_seconds")
+      .eq("user_id", userId)
+      .eq("date", today)
+      .maybeSingle();
+    const voiceCap = plan === "free" ? (settings.free_daily_voice_seconds ?? 300) : 0;
+    if (voiceCap > 0 && (usageRow?.voice_seconds ?? 0) >= voiceCap) {
+      throw new Error(`That's your ${Math.round(voiceCap / 60)} voice minutes for today. Text still works, always.`);
+    }
+
     const { transcribeAudio, speakText, callHearth } = await import("./hearth.server");
     const bytes = Buffer.from(data.audioBase64, "base64");
     const transcript = await transcribeAudio(new Uint8Array(bytes), data.mimeType);
     if (!transcript) throw new Error("I didn't catch that — try again?");
 
+    const { checkSafety } = await import("./safety");
+    const safety = checkSafety(transcript);
+    if (safety.blocked) throw new Error(safety.reason!);
+
     await supabase.from("messages").insert({
       conversation_id: data.conversationId,
       role: "user",
       content: transcript,
+      via: "voice",
     });
 
     const { data: recent } = await supabase
@@ -433,19 +508,37 @@ export const voiceTurn = createServerFn({ method: "POST" })
       .order("created_at", { ascending: true })
       .limit(40);
 
+    const memories = profile?.memory_enabled === false ? [] : await readMemories(supabase, userId);
     const reply = await callHearth(
-      (recent ?? []).map((m: any) => ({ role: m.role, content: m.content, attachments: (m.attachments ?? []) as any }))
+      (recent ?? []).map((m: any) => ({ role: m.role, content: m.content, attachments: (m.attachments ?? []) as any })),
+      { model: settings.ai_model, extraSystemPrompt: settings.system_prompt, memories, crisis: safety.crisis }
     );
 
     await supabase.from("messages").insert({
       conversation_id: data.conversationId,
       role: "assistant",
       content: reply,
+      via: "voice",
     });
     await supabase.from("conversations").update({ updated_at: new Date().toISOString() }).eq("id", data.conversationId);
 
-    const audio = await speakText(reply);
-    return { transcript, reply, audioBase64: audio };
+    if (usageRow) {
+      await supabase
+        .from("daily_usage")
+        .update({ voice_seconds: (usageRow.voice_seconds ?? 0) + data.seconds })
+        .eq("id", usageRow.id);
+    } else {
+      await supabase.from("daily_usage").insert({ user_id: userId, date: today, message_count: 0, voice_seconds: data.seconds });
+    }
+    await supabase.from("voice_sessions").insert({
+      user_id: userId,
+      conversation_id: data.conversationId,
+      seconds: data.seconds,
+      turns: 1,
+    });
+
+    const audio = await speakText(reply, profile?.voice_id || undefined);
+    return { transcript, reply, audioBase64: audio, crisis: safety.crisis };
   });
 
 // ---------- Admin: analytics series ----------
@@ -579,6 +672,11 @@ export interface SiteSettings {
   system_prompt: string;
   max_daily_messages: number;
   max_conversations: number;
+  free_daily_messages: number;
+  free_daily_voice_seconds: number;
+  journal_enabled: boolean;
+  memory_enabled: boolean;
+  quiet_rooms_enabled: boolean;
 }
 
 const SETTINGS_DEFAULTS: SiteSettings = {
@@ -596,6 +694,11 @@ const SETTINGS_DEFAULTS: SiteSettings = {
   system_prompt: "",
   max_daily_messages: 0,
   max_conversations: 0,
+  free_daily_messages: 30,
+  free_daily_voice_seconds: 300,
+  journal_enabled: true,
+  memory_enabled: true,
+  quiet_rooms_enabled: true,
 };
 
 async function readSettings(supabase: any): Promise<SiteSettings> {
@@ -644,6 +747,11 @@ export const adminUpdateSiteSettings = createServerFn({ method: "POST" })
       system_prompt: z.string().max(4000),
       max_daily_messages: z.number().int().min(0).max(10000),
       max_conversations: z.number().int().min(0).max(1000),
+      free_daily_messages: z.number().int().min(0).max(10000),
+      free_daily_voice_seconds: z.number().int().min(0).max(100000),
+      journal_enabled: z.boolean(),
+      memory_enabled: z.boolean(),
+      quiet_rooms_enabled: z.boolean(),
     }).parse(d)
   )
   .handler(async ({ context, data }) => {
