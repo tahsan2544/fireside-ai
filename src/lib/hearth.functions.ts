@@ -183,12 +183,33 @@ export const sendMessage = createServerFn({ method: "POST" })
     await assertActive(supabase, userId);
     const settings = await readSettings(supabase);
     if (settings.maintenance_mode) throw new Error("The fire is being tended. Back shortly.");
-    if (settings.max_daily_messages > 0) {
-      const { data: today0 } = await supabase
-        .from("daily_usage").select("message_count").eq("user_id", userId).eq("date", todayUTC()).maybeSingle();
-      if ((today0?.message_count ?? 0) >= settings.max_daily_messages) {
-        throw new Error(`That's your ${settings.max_daily_messages} words for today. Come back tomorrow.`);
-      }
+
+    const { checkSafety } = await import("./safety");
+    const safety = checkSafety(data.content);
+    if (safety.blocked) throw new Error(safety.reason!);
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("plan, memory_enabled")
+      .eq("id", userId)
+      .maybeSingle();
+    const plan = profile?.plan ?? "free";
+    const dailyCap =
+      settings.max_daily_messages > 0
+        ? settings.max_daily_messages
+        : plan === "free"
+          ? (settings.free_daily_messages ?? 30)
+          : 0;
+    const { data: today0 } = await supabase
+      .from("daily_usage")
+      .select("id, message_count")
+      .eq("user_id", userId)
+      .eq("date", todayUTC())
+      .maybeSingle();
+    if (dailyCap > 0 && (today0?.message_count ?? 0) >= dailyCap) {
+      throw new Error(
+        `That's ${dailyCap} messages today on the free hearth. Come back tomorrow, or open the door wider from Pricing.`
+      );
     }
 
     const { data: convo } = await supabase.from("conversations").select("id, user_id, title").eq("id", data.conversationId).maybeSingle();
@@ -211,6 +232,8 @@ export const sendMessage = createServerFn({ method: "POST" })
       .order("created_at", { ascending: true })
       .limit(40);
 
+    const memories = profile?.memory_enabled === false ? [] : await readMemories(supabase, userId);
+
     const { callHearth } = await import("./hearth.server");
     const assistantContent = await callHearth(
       (recent ?? []).map((m: any) => ({
@@ -218,7 +241,7 @@ export const sendMessage = createServerFn({ method: "POST" })
         content: m.content,
         attachments: (m.attachments ?? []) as any,
       })),
-      { model: settings.ai_model, extraSystemPrompt: settings.system_prompt }
+      { model: settings.ai_model, extraSystemPrompt: settings.system_prompt, memories, crisis: safety.crisis }
     );
 
     const { data: assistantRow, error: aErr } = await supabase
@@ -234,17 +257,43 @@ export const sendMessage = createServerFn({ method: "POST" })
     }
     await supabase.from("conversations").update(updates).eq("id", data.conversationId);
 
-    // Track usage (no enforcement — just analytics)
-    const today = todayUTC();
-    const { data: usage } = await supabase.from("daily_usage").select("id, message_count").eq("user_id", userId).eq("date", today).maybeSingle();
-    if (usage) {
-      await supabase.from("daily_usage").update({ message_count: usage.message_count + 1 }).eq("id", usage.id);
+    // Track usage
+    if (today0) {
+      await supabase.from("daily_usage").update({ message_count: today0.message_count + 1 }).eq("id", today0.id);
     } else {
-      await supabase.from("daily_usage").insert({ user_id: userId, date: today, message_count: 1 });
+      await supabase.from("daily_usage").insert({ user_id: userId, date: todayUTC(), message_count: 1 });
     }
 
-    return { assistant: assistantRow };
+    // Remember durable details (opt-out via settings), never crisis content
+    if (profile?.memory_enabled !== false && !safety.crisis && data.content.trim().length > 25) {
+      await rememberFrom(supabase, userId, `${data.content}\n\nCompanion replied: ${assistantContent}`, memories);
+    }
+
+    return { assistant: assistantRow, crisis: safety.crisis };
   });
+
+async function readMemories(supabase: any, userId: string): Promise<string[]> {
+  const { data } = await supabase
+    .from("memory_facts")
+    .select("content")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(30);
+  return (data ?? []).map((m: { content: string }) => m.content);
+}
+
+async function rememberFrom(supabase: any, userId: string, snippet: string, existing: string[]) {
+  try {
+    const { extractMemories } = await import("./fireside.server");
+    const facts = await extractMemories(snippet);
+    const lower = existing.map((e) => e.toLowerCase());
+    const fresh = facts.filter((f) => !lower.some((e) => e.includes(f.toLowerCase()) || f.toLowerCase().includes(e)));
+    if (!fresh.length) return;
+    await supabase.from("memory_facts").insert(fresh.map((content) => ({ user_id: userId, content, kind: "chat" })));
+  } catch {
+    /* memory is a nicety, never a blocker */
+  }
+}
 
 // ---------- Generate image ----------
 export const generateImage = createServerFn({ method: "POST" })
