@@ -50,14 +50,25 @@ async function openRouterChat(messages: ChatMessage[], model = OPENROUTER_MODEL)
 
 export async function callHearth(
   history: { role: "user" | "assistant"; content: string; attachments?: StoredAttachment[] }[],
-  options?: { model?: string; extraSystemPrompt?: string }
+  options?: { model?: string; extraSystemPrompt?: string; memories?: string[]; crisis?: boolean }
 ): Promise<string> {
+  let system = SYSTEM_PROMPT;
+  if (options?.memories?.length) {
+    system += `\n\nThings you already know about them (use naturally, never recite as a list, never use them to guilt or nudge them about absence):\n- ${options.memories
+      .slice(0, 30)
+      .join("\n- ")}`;
+  }
+  if (options?.crisis) {
+    system += `\n\nThis person may be in distress or talking about self-harm. Stay calm and warm. Acknowledge what they said without alarm or clinical language. Gently encourage them to reach out to someone real — a person they trust, or a crisis line like 988 in the US. Do not lecture, do not refuse to keep talking, do not give instructions for self-harm. Stay with them.`;
+  }
+  if (options?.extraSystemPrompt?.trim()) {
+    system += `\n\nAdditional guidance from the keeper of this fire:\n${options.extraSystemPrompt.trim()}`;
+  }
+
   const messages: ChatMessage[] = [
     {
       role: "system",
-      content: options?.extraSystemPrompt?.trim()
-        ? `${SYSTEM_PROMPT}\n\nAdditional guidance from the keeper of this fire:\n${options.extraSystemPrompt.trim()}`
-        : SYSTEM_PROMPT,
+      content: system,
     },
     ...history.map((m) => {
       const atts = m.attachments ?? [];
