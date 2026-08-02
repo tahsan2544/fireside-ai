@@ -53,7 +53,13 @@ export const updatePrefs = createServerFn({ method: "POST" })
   )
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
-    const patch: Record<string, unknown> = {};
+    const patch: {
+      display_name?: string;
+      voice_id?: string;
+      memory_enabled?: boolean;
+      reflection_optin?: boolean;
+      age_confirmed?: boolean;
+    } = {};
     if (data.displayName !== undefined) patch.display_name = data.displayName.trim();
     if (data.voiceId !== undefined) patch.voice_id = data.voiceId;
     if (data.memoryEnabled !== undefined) patch.memory_enabled = data.memoryEnabled;
