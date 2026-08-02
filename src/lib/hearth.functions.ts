@@ -703,6 +703,11 @@ export const adminUpdateSiteSettings = createServerFn({ method: "POST" })
       system_prompt: z.string().max(4000),
       max_daily_messages: z.number().int().min(0).max(10000),
       max_conversations: z.number().int().min(0).max(1000),
+      free_daily_messages: z.number().int().min(0).max(10000),
+      free_daily_voice_seconds: z.number().int().min(0).max(100000),
+      journal_enabled: z.boolean(),
+      memory_enabled: z.boolean(),
+      quiet_rooms_enabled: z.boolean(),
     }).parse(d)
   )
   .handler(async ({ context, data }) => {
