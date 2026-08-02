@@ -455,6 +455,7 @@ export const voiceTurn = createServerFn({ method: "POST" })
       conversationId: z.string().uuid(),
       audioBase64: z.string().min(16),
       mimeType: z.string().min(3).max(80).default("audio/webm"),
+      seconds: z.number().int().min(0).max(600).default(0),
     }).parse(d)
   )
   .handler(async ({ context, data }) => {
@@ -463,16 +464,41 @@ export const voiceTurn = createServerFn({ method: "POST" })
     if (!convo || convo.user_id !== userId) throw new Error("Room not found");
 
     await assertActive(supabase, userId);
-    if (!(await readSettings(supabase)).voice_enabled) throw new Error("Voice is resting right now.");
+    const settings = await readSettings(supabase);
+    if (!settings.voice_enabled) throw new Error("Voice is resting right now.");
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("plan, voice_id, memory_enabled")
+      .eq("id", userId)
+      .maybeSingle();
+    const plan = profile?.plan ?? "free";
+    const today = todayUTC();
+    const { data: usageRow } = await supabase
+      .from("daily_usage")
+      .select("id, message_count, voice_seconds")
+      .eq("user_id", userId)
+      .eq("date", today)
+      .maybeSingle();
+    const voiceCap = plan === "free" ? (settings.free_daily_voice_seconds ?? 300) : 0;
+    if (voiceCap > 0 && (usageRow?.voice_seconds ?? 0) >= voiceCap) {
+      throw new Error(`That's your ${Math.round(voiceCap / 60)} voice minutes for today. Text still works, always.`);
+    }
+
     const { transcribeAudio, speakText, callHearth } = await import("./hearth.server");
     const bytes = Buffer.from(data.audioBase64, "base64");
     const transcript = await transcribeAudio(new Uint8Array(bytes), data.mimeType);
     if (!transcript) throw new Error("I didn't catch that — try again?");
 
+    const { checkSafety } = await import("./safety");
+    const safety = checkSafety(transcript);
+    if (safety.blocked) throw new Error(safety.reason!);
+
     await supabase.from("messages").insert({
       conversation_id: data.conversationId,
       role: "user",
       content: transcript,
+      via: "voice",
     });
 
     const { data: recent } = await supabase
@@ -482,19 +508,37 @@ export const voiceTurn = createServerFn({ method: "POST" })
       .order("created_at", { ascending: true })
       .limit(40);
 
+    const memories = profile?.memory_enabled === false ? [] : await readMemories(supabase, userId);
     const reply = await callHearth(
-      (recent ?? []).map((m: any) => ({ role: m.role, content: m.content, attachments: (m.attachments ?? []) as any }))
+      (recent ?? []).map((m: any) => ({ role: m.role, content: m.content, attachments: (m.attachments ?? []) as any })),
+      { model: settings.ai_model, extraSystemPrompt: settings.system_prompt, memories, crisis: safety.crisis }
     );
 
     await supabase.from("messages").insert({
       conversation_id: data.conversationId,
       role: "assistant",
       content: reply,
+      via: "voice",
     });
     await supabase.from("conversations").update({ updated_at: new Date().toISOString() }).eq("id", data.conversationId);
 
-    const audio = await speakText(reply);
-    return { transcript, reply, audioBase64: audio };
+    if (usageRow) {
+      await supabase
+        .from("daily_usage")
+        .update({ voice_seconds: (usageRow.voice_seconds ?? 0) + data.seconds })
+        .eq("id", usageRow.id);
+    } else {
+      await supabase.from("daily_usage").insert({ user_id: userId, date: today, message_count: 0, voice_seconds: data.seconds });
+    }
+    await supabase.from("voice_sessions").insert({
+      user_id: userId,
+      conversation_id: data.conversationId,
+      seconds: data.seconds,
+      turns: 1,
+    });
+
+    const audio = await speakText(reply, profile?.voice_id || undefined);
+    return { transcript, reply, audioBase64: audio, crisis: safety.crisis };
   });
 
 // ---------- Admin: analytics series ----------
