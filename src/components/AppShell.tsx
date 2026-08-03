@@ -23,6 +23,7 @@ const links = [
   { to: "/hearth", label: "The Hearth", icon: MessageCircle },
   { to: "/commons", label: "The Commons", icon: Users },
   { to: "/journal", label: "Journal", icon: NotebookPen },
+  { to: "/memory", label: "Memory", icon: Brain },
   { to: "/settings", label: "Settings", icon: SettingsIcon },
 ] as const;
 
