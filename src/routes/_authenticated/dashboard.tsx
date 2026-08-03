@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppShell, useMe, useSiteSettings, useIsAdmin } from "@/components/AppShell";
-import { MessageCircle, Users, ShieldCheck } from "lucide-react";
+import { MessageCircle, Users, ShieldCheck, NotebookPen, Brain } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
@@ -53,6 +53,25 @@ function Dashboard() {
             <Users className="mb-5 h-6 w-6 text-primary" />
             <h2 className="serif text-xl">Go to The Commons</h2>
             <p className="mt-2 text-sm text-muted-foreground">Talk to others who are sitting by the fire right now.</p>
+          </Link>
+        </div>
+
+        <div className="mt-5 grid gap-5 sm:grid-cols-2">
+          <Link
+            to="/journal"
+            className="rounded-2xl border border-border/60 bg-card p-6 transition-colors hover:border-primary/50"
+          >
+            <NotebookPen className="mb-4 h-5 w-5 text-primary" />
+            <h2 className="serif text-lg">The Journal</h2>
+            <p className="mt-1 text-sm text-muted-foreground">A prompt a day, and somewhere private to put it.</p>
+          </Link>
+          <Link
+            to="/memory"
+            className="rounded-2xl border border-border/60 bg-card p-6 transition-colors hover:border-primary/50"
+          >
+            <Brain className="mb-4 h-5 w-5 text-primary" />
+            <h2 className="serif text-lg">What Fireside remembers</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Everything it holds onto — yours to edit or clear.</p>
           </Link>
         </div>
 
