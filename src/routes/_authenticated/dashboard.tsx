@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppShell, useMe, useSiteSettings, useIsAdmin } from "@/components/AppShell";
-import { MessageCircle, Users, ShieldCheck } from "lucide-react";
+import { MessageCircle, Users, ShieldCheck, NotebookPen, Brain } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
