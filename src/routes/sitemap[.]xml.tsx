@@ -7,7 +7,7 @@ const PAGES = [
   { path: "/pricing", priority: "0.8", freq: "monthly" },
 ];
 
-export const Route = createFileRoute("/sitemap[.]xml")({
+export const Route = createFileRoute("/sitemap.xml")({
   server: {
     handlers: {
       GET: () => {
