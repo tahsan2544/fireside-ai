@@ -12,6 +12,7 @@ import {
   NotebookPen,
   Settings as SettingsIcon,
   ShieldCheck,
+  Brain,
   LogOut,
 } from "lucide-react";
 import type { ReactNode } from "react";
