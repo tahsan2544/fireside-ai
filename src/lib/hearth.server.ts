@@ -70,15 +70,18 @@ export async function callHearth(
       role: "system",
       content: system,
     },
-    ...history.map((m) => {
-      const atts = m.attachments ?? [];
-      if (!atts.length) return { role: m.role, content: m.content };
-      // Nemotron is text-only: describe attachments instead of sending them.
-      const note = atts
-        .map((a) => (a.type.startsWith("image/") ? `[shared a photo: ${a.name}]` : `[shared a file: ${a.name}]`))
-        .join(" ");
-      return { role: m.role, content: [m.content, note].filter(Boolean).join("\n") };
-    }),
+    ...(await Promise.all(
+      history.map(async (m) => {
+        const atts = m.attachments ?? [];
+        if (!atts.length) return { role: m.role, content: m.content } as ChatMessage;
+        // Nemotron is text-only: inline readable documents, describe the rest.
+        const notes = await Promise.all(atts.map(readAttachmentForModel));
+        return {
+          role: m.role,
+          content: [m.content, ...notes].filter(Boolean).join("\n\n"),
+        } as ChatMessage;
+      })
+    )),
 
   ];
 
