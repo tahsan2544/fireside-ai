@@ -48,6 +48,24 @@ async function openRouterChat(messages: ChatMessage[], model = OPENROUTER_MODEL)
   return content.trim();
 }
 
+const TEXTUAL = /^(text\/|application\/(json|xml|csv|markdown|x-yaml|yaml|javascript|typescript))/;
+
+// Turn an attachment into something a text-only model can actually use.
+async function readAttachmentForModel(a: StoredAttachment): Promise<string> {
+  if (a.type.startsWith("image/")) return `[shared a photo: ${a.name}]`;
+  const looksTextual = TEXTUAL.test(a.type) || /\.(txt|md|markdown|csv|json|log|yml|yaml|html?|ts|js|py)$/i.test(a.name);
+  if (!looksTextual || !a.url) return `[shared a file: ${a.name} (${a.type || "unknown type"})]`;
+  try {
+    const res = await fetch(a.url);
+    if (!res.ok) return `[shared a file: ${a.name}]`;
+    const text = (await res.text()).slice(0, 6000);
+    if (!text.trim()) return `[shared an empty file: ${a.name}]`;
+    return `[they shared a document: ${a.name}]\n"""\n${text}\n"""`;
+  } catch {
+    return `[shared a file: ${a.name}]`;
+  }
+}
+
 export async function callHearth(
   history: { role: "user" | "assistant"; content: string; attachments?: StoredAttachment[] }[],
   options?: { model?: string; extraSystemPrompt?: string; memories?: string[]; crisis?: boolean }
