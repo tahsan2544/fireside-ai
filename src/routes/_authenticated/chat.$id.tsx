@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { VoiceRoom } from "@/components/VoiceRoom";
-import { ACCEPTED_UPLOADS } from "@/routes/_authenticated/hearth";
+import { ACCEPTED_UPLOADS } from "@/lib/uploads";
 import { ArrowLeft, Send, Paperclip, ImagePlus, FileText, Trash2, X, Download, Mic } from "lucide-react";
 
 

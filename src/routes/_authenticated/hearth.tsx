@@ -11,6 +11,7 @@ import {
   generateDocument,
 } from "@/lib/hearth.functions";
 import { supabase } from "@/integrations/supabase/client";
+import { ACCEPTED_UPLOADS } from "@/lib/uploads";
 import { AppShell } from "@/components/AppShell";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -18,35 +19,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { Loader2, SendHorizonal, Paperclip, ImagePlus, FileText, X, Download } from "lucide-react";
 
-export const ACCEPTED_UPLOADS = [
-  "image/*",
-  ".pdf",
-  ".txt",
-  ".md",
-  ".markdown",
-  ".rtf",
-  ".csv",
-  ".tsv",
-  ".json",
-  ".xml",
-  ".yml",
-  ".yaml",
-  ".log",
-  ".doc",
-  ".docx",
-  ".odt",
-  ".xls",
-  ".xlsx",
-  ".ods",
-  ".ppt",
-  ".pptx",
-  ".odp",
-  ".epub",
-  ".pages",
-  ".numbers",
-  ".key",
-  ".zip",
-].join(",");
 
 export const Route = createFileRoute("/_authenticated/hearth")({
   head: () => ({
