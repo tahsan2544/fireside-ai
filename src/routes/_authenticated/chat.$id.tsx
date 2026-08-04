@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { VoiceRoom } from "@/components/VoiceRoom";
+import { ACCEPTED_UPLOADS } from "@/routes/_authenticated/hearth";
 import { ArrowLeft, Send, Paperclip, ImagePlus, FileText, Trash2, X, Download, Mic } from "lucide-react";
 
 
@@ -232,7 +233,7 @@ function Chat() {
             </div>
           )}
           <form onSubmit={handleSubmit} className="flex gap-2 items-end">
-            <input ref={fileRef} type="file" multiple hidden onChange={handleFilePick} accept="image/*,.pdf,.txt,.md,.doc,.docx" />
+            <input ref={fileRef} type="file" multiple hidden onChange={handleFilePick} accept={ACCEPTED_UPLOADS} />
             <div className="flex gap-1 pb-1">
               <Button type="button" variant="ghost" size="icon" onClick={() => fileRef.current?.click()} disabled={uploading || busy} title="Attach photo or document">
                 <Paperclip className="w-4 h-4" />
