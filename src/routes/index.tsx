@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
@@ -71,7 +72,10 @@ function Threshold() {
   };
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-background px-6 py-16">
+    <main className="relative flex min-h-screen items-center justify-center bg-background px-6 py-16">
+      <div className="absolute right-4 top-4">
+        <ThemeToggle />
+      </div>
       <div className="w-full max-w-sm">
         <div className="mb-10 text-center">
           <Flame className="mx-auto mb-6 h-7 w-7 text-primary" />
