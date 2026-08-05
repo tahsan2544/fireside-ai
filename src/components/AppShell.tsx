@@ -15,6 +15,7 @@ import {
   Brain,
   LogOut,
 } from "lucide-react";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import type { ReactNode } from "react";
 
 export const ADMIN_EMAIL = "tarifulislam2544@gmail.com";
@@ -95,9 +96,11 @@ export function AppShell({ children }: { children: ReactNode }) {
             </Link>
           )}
 
+          <ThemeToggle className="ml-auto" />
+
           <button
             onClick={signOut}
-            className="ml-auto inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground"
+            className=" inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground"
           >
             <LogOut className="h-3.5 w-3.5" />
             Log out

@@ -35,6 +35,7 @@ export const Route = createFileRoute("/_authenticated/hearth")({
 });
 
 type Attachment = { url: string; type: string; name: string };
+type Pending = { path: string; type: string; name: string };
 type Msg = { id: string; role: string; content: string; created_at: string; attachments?: Attachment[] };
 
 function AttachmentView({ attachment }: { attachment: Attachment }) {
@@ -69,7 +70,7 @@ function HearthPage() {
   const genDocFn = useServerFn(generateDocument);
 
   const [text, setText] = useState("");
-  const [pending, setPending] = useState<Attachment[]>([]);
+  const [pending, setPending] = useState<Pending[]>([]);
   const [uploading, setUploading] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -87,7 +88,7 @@ function HearthPage() {
   const refresh = () => qc.invalidateQueries({ queryKey: ["hearth-convo", roomId] });
 
   const send = useMutation({
-    mutationFn: (payload: { content: string; attachments: Attachment[] }) =>
+    mutationFn: (payload: { content: string; attachments: Pending[] }) =>
       sendFn({ data: { conversationId: roomId!, content: payload.content, attachments: payload.attachments } }),
     onSuccess: () => {
       setPending([]);
@@ -119,7 +120,7 @@ function HearthPage() {
     if (!files || !files.length || !roomId) return;
     setUploading(true);
     try {
-      const uploaded: Attachment[] = [];
+      const uploaded: Pending[] = [];
       for (const file of Array.from(files)) {
         if (file.size > 20 * 1024 * 1024) {
           toast.error(`${file.name} is too big (max 20MB)`);
@@ -130,14 +131,7 @@ function HearthPage() {
           contentType: file.type || "application/octet-stream",
         });
         if (error) throw error;
-        const { data: signed } = await supabase.storage
-          .from("chat-attachments")
-          .createSignedUrl(path, 60 * 60 * 24 * 365);
-        uploaded.push({
-          url: signed?.signedUrl ?? "",
-          type: file.type || "application/octet-stream",
-          name: file.name,
-        });
+        uploaded.push({ path, type: file.type || "application/octet-stream", name: file.name });
       }
       setPending((p) => [...p, ...uploaded]);
     } catch (err) {
@@ -147,6 +141,7 @@ function HearthPage() {
       if (fileRef.current) fileRef.current.value = "";
     }
   }
+
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();

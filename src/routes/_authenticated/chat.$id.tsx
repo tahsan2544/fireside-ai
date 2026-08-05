@@ -24,7 +24,8 @@ export const Route = createFileRoute("/_authenticated/chat/$id")({
   component: Chat,
 });
 
-type PendingAttachment = { url: string; type: string; name: string };
+type PendingAttachment = { path: string; type: string; name: string };
+type StoredAttachment = { url: string; type: string; name: string };
 
 function Chat() {
   const { id } = Route.useParams();
@@ -110,8 +111,7 @@ function Chat() {
           contentType: file.type || "application/octet-stream",
         });
         if (error) throw error;
-        const { data: signed } = await supabase.storage.from("chat-attachments").createSignedUrl(path, 60 * 60 * 24 * 365);
-        uploaded.push({ url: signed?.signedUrl ?? "", type: file.type || "application/octet-stream", name: file.name });
+        uploaded.push({ path, type: file.type || "application/octet-stream", name: file.name });
       }
       setPending((p) => [...p, ...uploaded]);
     } catch (err) {
@@ -197,7 +197,7 @@ function Chat() {
                   {m.content && <div>{m.content}</div>}
                   {Array.isArray(m.attachments) && m.attachments.length > 0 && (
                     <div className="mt-2 space-y-2">
-                      {m.attachments.map((a: PendingAttachment, i: number) => (
+                      {m.attachments.map((a: StoredAttachment, i: number) => (
                         <AttachmentView key={i} attachment={a} />
                       ))}
                     </div>
@@ -281,7 +281,7 @@ function Chat() {
   );
 }
 
-function AttachmentView({ attachment }: { attachment: PendingAttachment }) {
+function AttachmentView({ attachment }: { attachment: StoredAttachment }) {
   const isImage = attachment.type.startsWith("image/");
   if (isImage) {
     return (

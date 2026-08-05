@@ -12,11 +12,15 @@ export interface UsageInfo {
   email: string;
 }
 
+// Clients never hand us URLs — only a storage path inside the chat-attachments
+// bucket, which the server verifies belongs to the caller's conversation and
+// then signs itself. This removes any server-side fetch of attacker URLs (SSRF).
 const AttachmentSchema = z.object({
-  url: z.string().url(),
+  path: z.string().min(1).max(400),
   type: z.string().min(1).max(120),
   name: z.string().min(1).max(200),
 });
+
 
 function todayUTC(): string {
   return new Date().toISOString().slice(0, 10);
@@ -215,14 +219,29 @@ export const sendMessage = createServerFn({ method: "POST" })
     const { data: convo } = await supabase.from("conversations").select("id, user_id, title").eq("id", data.conversationId).maybeSingle();
     if (!convo || convo.user_id !== userId) throw new Error("Room not found");
 
+    // Resolve attachments: paths must live under this conversation's folder.
+    const resolvedAttachments: { url: string; type: string; name: string; path: string }[] = [];
+    for (const a of data.attachments) {
+      const path = a.path.replace(/^\/+/, "");
+      if (!path.startsWith(`${data.conversationId}/`) || path.includes("..")) {
+        throw new Error("That attachment doesn't belong to this room.");
+      }
+      const { data: signed, error: sErr } = await supabase.storage
+        .from("chat-attachments")
+        .createSignedUrl(path, 60 * 60 * 24 * 365);
+      if (sErr || !signed?.signedUrl) throw new Error("That attachment couldn't be read.");
+      resolvedAttachments.push({ url: signed.signedUrl, type: a.type, name: a.name, path });
+    }
+
     // Insert user message with attachments
     const { error: uErr } = await supabase.from("messages").insert({
       conversation_id: data.conversationId,
       role: "user",
       content: data.content,
-      attachments: data.attachments,
+      attachments: resolvedAttachments,
     });
     if (uErr) throw uErr;
+
 
     // Load recent history for context
     const { data: recent } = await supabase
