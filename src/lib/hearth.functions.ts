@@ -12,11 +12,15 @@ export interface UsageInfo {
   email: string;
 }
 
+// Clients never hand us URLs — only a storage path inside the chat-attachments
+// bucket, which the server verifies belongs to the caller's conversation and
+// then signs itself. This removes any server-side fetch of attacker URLs (SSRF).
 const AttachmentSchema = z.object({
-  url: z.string().url(),
+  path: z.string().min(1).max(400),
   type: z.string().min(1).max(120),
   name: z.string().min(1).max(200),
 });
+
 
 function todayUTC(): string {
   return new Date().toISOString().slice(0, 10);
