@@ -97,7 +97,7 @@ function RootShell({ children }: { children: ReactNode }) {
       <head><HeadContent /></head>
       <body>
         <ScriptOnce>
-          {`(function(){try{var t=localStorage.getItem('fireside-theme')||(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');if(t==='dark'){document.documentElement.classList.add('dark');}document.documentElement.style.colorScheme=t;}catch(e){}})();`}
+          {`(function(){try{var t=localStorage.getItem('fireside-theme')||'light';if(t==='dark'){document.documentElement.classList.add('dark');}document.documentElement.style.colorScheme=t;}catch(e){}})();`}
         </ScriptOnce>
         {children}
         <Scripts />
