@@ -35,6 +35,7 @@ export const Route = createFileRoute("/_authenticated/hearth")({
 });
 
 type Attachment = { url: string; type: string; name: string };
+type Pending = { path: string; type: string; name: string };
 type Msg = { id: string; role: string; content: string; created_at: string; attachments?: Attachment[] };
 
 function AttachmentView({ attachment }: { attachment: Attachment }) {
@@ -69,7 +70,7 @@ function HearthPage() {
   const genDocFn = useServerFn(generateDocument);
 
   const [text, setText] = useState("");
-  const [pending, setPending] = useState<Attachment[]>([]);
+  const [pending, setPending] = useState<Pending[]>([]);
   const [uploading, setUploading] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -87,7 +88,7 @@ function HearthPage() {
   const refresh = () => qc.invalidateQueries({ queryKey: ["hearth-convo", roomId] });
 
   const send = useMutation({
-    mutationFn: (payload: { content: string; attachments: Attachment[] }) =>
+    mutationFn: (payload: { content: string; attachments: Pending[] }) =>
       sendFn({ data: { conversationId: roomId!, content: payload.content, attachments: payload.attachments } }),
     onSuccess: () => {
       setPending([]);
