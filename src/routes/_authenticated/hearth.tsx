@@ -119,7 +119,7 @@ function HearthPage() {
     if (!files || !files.length || !roomId) return;
     setUploading(true);
     try {
-      const uploaded: Attachment[] = [];
+      const uploaded: Pending[] = [];
       for (const file of Array.from(files)) {
         if (file.size > 20 * 1024 * 1024) {
           toast.error(`${file.name} is too big (max 20MB)`);
@@ -130,14 +130,7 @@ function HearthPage() {
           contentType: file.type || "application/octet-stream",
         });
         if (error) throw error;
-        const { data: signed } = await supabase.storage
-          .from("chat-attachments")
-          .createSignedUrl(path, 60 * 60 * 24 * 365);
-        uploaded.push({
-          url: signed?.signedUrl ?? "",
-          type: file.type || "application/octet-stream",
-          name: file.name,
-        });
+        uploaded.push({ path, type: file.type || "application/octet-stream", name: file.name });
       }
       setPending((p) => [...p, ...uploaded]);
     } catch (err) {
@@ -147,6 +140,7 @@ function HearthPage() {
       if (fileRef.current) fileRef.current.value = "";
     }
   }
+
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
