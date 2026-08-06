@@ -12,16 +12,49 @@ import { Flame, Loader2 } from "lucide-react";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Fireside AI — A quiet place. A warm voice." },
-      { name: "description", content: "A minimalist fireside: talk with a gentle AI, or sit with others in the Commons." },
-      { property: "og:title", content: "Fireside AI — A quiet place. A warm voice." },
-      { property: "og:description", content: "A minimalist fireside: talk with a gentle AI, or sit with others in the Commons." },
+      { title: "Fireside AI — A calm AI companion to talk with" },
+      {
+        name: "description",
+        content:
+          "Fireside AI is a quiet AI companion. Talk one-to-one at the Hearth, sit with others in the Commons, and keep a private journal.",
+      },
+      { property: "og:title", content: "Fireside AI — A calm AI companion to talk with" },
+      {
+        property: "og:description",
+        content: "Talk one-to-one with a gentle AI at the Hearth, or sit with others in the Commons.",
+      },
       { property: "og:type", content: "website" },
+      { property: "og:url", content: "https://fireside-ai.lovable.app/" },
       { name: "twitter:card", content: "summary_large_image" },
+    ],
+    links: [{ rel: "canonical", href: "https://fireside-ai.lovable.app/" }],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "WebSite",
+          name: "Fireside AI",
+          url: "https://fireside-ai.lovable.app/",
+          description:
+            "A calm AI companion: private conversation at the Hearth, shared rooms in the Commons, and a reflective journal.",
+        }),
+      },
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "Organization",
+          name: "Fireside AI",
+          url: "https://fireside-ai.lovable.app/",
+          logo: "https://fireside-ai.lovable.app/favicon.ico",
+        }),
+      },
     ],
   }),
   component: Threshold,
 });
+
 
 function Threshold() {
   const navigate = useNavigate();

@@ -42,7 +42,7 @@ function AttachmentView({ attachment }: { attachment: Attachment }) {
   if (attachment.type.startsWith("image/")) {
     return (
       <a href={attachment.url} target="_blank" rel="noreferrer" className="block">
-        <img src={attachment.url} alt={attachment.name} className="max-h-64 rounded-lg object-cover" loading="lazy" />
+        <img src={attachment.url} alt={`Image shared in this conversation: ${attachment.name}`} className="max-h-64 rounded-lg object-cover" loading="lazy" />
       </a>
     );
   }
