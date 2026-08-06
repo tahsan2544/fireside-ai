@@ -3,7 +3,6 @@ import { createFileRoute } from "@tanstack/react-router";
 const BASE = "https://fireside-ai.lovable.app";
 const PAGES = [
   { path: "/", priority: "1.0", freq: "weekly" },
-  { path: "/auth", priority: "0.6", freq: "monthly" },
   { path: "/pricing", priority: "0.8", freq: "monthly" },
 ];
 
