@@ -105,14 +105,20 @@ function Threshold() {
   };
 
   return (
-    <main className="relative flex min-h-screen items-center justify-center bg-background px-6 py-16">
+    <main className="relative min-h-screen bg-background px-6 py-16">
       <div className="absolute right-4 top-4">
         <ThemeToggle />
       </div>
-      <div className="w-full max-w-sm">
+      <div className="mx-auto w-full max-w-sm">
         <div className="mb-10 text-center">
-          <Flame className="mx-auto mb-6 h-7 w-7 text-primary" />
-          <h1 className="serif text-3xl leading-snug text-foreground">A quiet place.<br />A warm voice.</h1>
+          <Flame className="mx-auto mb-6 h-7 w-7 text-primary" aria-hidden="true" />
+          <h1 className="serif text-3xl leading-snug text-foreground">
+            Fireside AI — a quiet place.
+            <br />A warm voice.
+          </h1>
+          <p className="mt-4 text-sm text-muted-foreground">
+            A calm AI companion for the end of the day. Talk it through, or just sit for a while.
+          </p>
         </div>
 
         <form onSubmit={submit} className="space-y-4">
@@ -131,7 +137,7 @@ function Threshold() {
             <Input id="password" type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} className="mt-1" />
           </div>
           <Button type="submit" disabled={loading} className="w-full rounded-full">
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : mode === "signin" ? "Sign In" : "Sign Up"}
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" aria-label="Signing in" /> : mode === "signin" ? "Sign In" : "Sign Up"}
           </Button>
         </form>
 
@@ -146,6 +152,50 @@ function Threshold() {
           </button>
         </p>
       </div>
+
+      <section className="mx-auto mt-20 max-w-2xl space-y-10 text-sm leading-relaxed text-muted-foreground">
+        <div>
+          <h2 className="serif text-xl text-foreground">What Fireside AI is</h2>
+          <p className="mt-3">
+            Fireside AI is an AI companion built for presence rather than productivity. There are no streaks, no
+            dashboards of progress, no nudges to come back. You open it when you want to talk, say what's on your mind
+            in plain words, and get a gentle, unhurried reply. Everything you write stays private to your account.
+          </p>
+        </div>
+
+        <div>
+          <h2 className="serif text-xl text-foreground">The Hearth — private conversation with an AI</h2>
+          <p className="mt-3">
+            The Hearth is a one-to-one room with a warm, brief AI companion. It remembers the things you ask it to
+            remember — your name, what you're working through, what helps on a hard day — and you can read, edit or
+            erase those memories at any time. You can talk by typing, speak out loud with voice, or share a photo or a
+            document and have it read along with you.
+          </p>
+        </div>
+
+        <div>
+          <h2 className="serif text-xl text-foreground">The Commons — sit with other people</h2>
+          <p className="mt-3">
+            The Commons is a real-time room for people, not bots. You can see who is sitting by the fire right now,
+            join a Quiet Room when you'd rather listen than talk, and step out whenever you like. It's moderated,
+            slow-paced and deliberately small.
+          </p>
+        </div>
+
+        <div>
+          <h2 className="serif text-xl text-foreground">A journal that reflects back</h2>
+          <p className="mt-3">
+            Write a few lines about your day, mark how it felt, and — only if you ask — receive a short reflection
+            instead of advice. Entries are yours alone and can be exported whenever you want them elsewhere.
+          </p>
+        </div>
+
+        <p className="text-xs">
+          Fireside AI is a companion for everyday reflection, not therapy or crisis care. If you're in danger, please
+          contact your local emergency services.
+        </p>
+      </section>
     </main>
   );
+
 }
