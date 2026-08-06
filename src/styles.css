@@ -64,29 +64,31 @@
 }
 
 .dark {
-  --background: oklch(0.18 0.03 40);
-  --foreground: oklch(0.94 0.02 70);
-  --card: oklch(0.22 0.035 40);
-  --card-foreground: oklch(0.94 0.02 70);
-  --popover: oklch(0.22 0.035 40);
-  --popover-foreground: oklch(0.94 0.02 70);
-  --primary: oklch(0.72 0.16 55);
-  --primary-foreground: oklch(0.18 0.03 40);
-  --secondary: oklch(0.28 0.04 40);
-  --secondary-foreground: oklch(0.94 0.02 70);
-  --muted: oklch(0.26 0.03 40);
-  --muted-foreground: oklch(0.7 0.03 60);
-  --accent: oklch(0.35 0.08 45);
-  --accent-foreground: oklch(0.94 0.02 70);
-  --destructive: oklch(0.55 0.2 25);
-  --destructive-foreground: oklch(0.94 0.02 70);
-  --border: oklch(0.3 0.03 40);
-  --input: oklch(0.3 0.03 40);
-  --ring: oklch(0.72 0.16 55);
-  --ember: oklch(0.72 0.19 55);
-  --flame: oklch(0.8 0.2 65);
-  --wood: oklch(0.22 0.03 40);
+  /* Deep ember-lit night: warmer, higher contrast, more separation */
+  --background: oklch(0.16 0.022 45);
+  --foreground: oklch(0.96 0.015 75);
+  --card: oklch(0.215 0.028 45);
+  --card-foreground: oklch(0.96 0.015 75);
+  --popover: oklch(0.205 0.028 45);
+  --popover-foreground: oklch(0.96 0.015 75);
+  --primary: oklch(0.78 0.155 62);
+  --primary-foreground: oklch(0.17 0.03 42);
+  --secondary: oklch(0.27 0.035 45);
+  --secondary-foreground: oklch(0.95 0.02 70);
+  --muted: oklch(0.25 0.028 45);
+  --muted-foreground: oklch(0.78 0.028 68);
+  --accent: oklch(0.33 0.062 50);
+  --accent-foreground: oklch(0.96 0.02 72);
+  --destructive: oklch(0.62 0.19 27);
+  --destructive-foreground: oklch(0.98 0.01 70);
+  --border: oklch(0.33 0.03 48);
+  --input: oklch(0.34 0.03 48);
+  --ring: oklch(0.78 0.155 62);
+  --ember: oklch(0.74 0.19 58);
+  --flame: oklch(0.83 0.19 70);
+  --wood: oklch(0.26 0.04 40);
 }
+
 
 @layer base {
   * {
@@ -192,4 +194,16 @@
 .warm-border {
   border: 1px solid var(--color-border);
   box-shadow: 0 1px 0 oklch(1 0 0 / 0.5) inset, 0 4px 20px -8px oklch(0.4 0.1 40 / 0.15);
+}
+
+.dark .warm-border {
+  box-shadow: 0 1px 0 oklch(1 0 0 / 0.04) inset, 0 8px 28px -14px oklch(0 0 0 / 0.7);
+}
+
+.dark .hearth-glow-soft {
+  background: radial-gradient(ellipse at 50% 100%, oklch(0.74 0.19 58 / 0.28), transparent 72%);
+}
+
+.dark ::selection {
+  background: oklch(0.78 0.155 62 / 0.35);
 }

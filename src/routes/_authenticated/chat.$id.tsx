@@ -286,7 +286,7 @@ function AttachmentView({ attachment }: { attachment: StoredAttachment }) {
   if (isImage) {
     return (
       <a href={attachment.url} target="_blank" rel="noreferrer" className="block">
-        <img src={attachment.url} alt={attachment.name} className="rounded-lg max-h-72 object-cover" />
+        <img src={attachment.url} alt={`Image shared in this conversation: ${attachment.name}`} className="rounded-lg max-h-72 object-cover" />
       </a>
     );
   }
