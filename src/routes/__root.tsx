@@ -70,6 +70,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { name: "google-site-verification", content: "qD2wbIbfTsX_p67Au0gEw3sNiOTZide8Q14-a4iWtpE" },
       { title: "Fireside AI — A quiet place. A warm voice." },
       { name: "description", content: "A minimalist fireside: talk with a gentle AI, or sit with others in the Commons." },
       { property: "og:title", content: "Fireside AI — A quiet place. A warm voice." },
