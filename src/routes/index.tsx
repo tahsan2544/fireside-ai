@@ -101,6 +101,9 @@ function Threshold() {
 
   return (
     <main className="relative min-h-screen bg-background px-6 py-16">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: SITE_JSONLD }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: ORG_JSONLD }} />
+
       <div className="absolute right-4 top-4">
         <ThemeToggle />
       </div>
