@@ -28,30 +28,8 @@ export const Route = createFileRoute("/")({
       { name: "twitter:card", content: "summary_large_image" },
     ],
     links: [{ rel: "canonical", href: "https://fireside-ai.lovable.app/" }],
-    scripts: [
-      {
-        type: "application/ld+json",
-        children: JSON.stringify({
-          "@context": "https://schema.org",
-          "@type": "WebSite",
-          name: "Fireside AI",
-          url: "https://fireside-ai.lovable.app/",
-          description:
-            "A calm AI companion: private conversation at the Hearth, shared rooms in the Commons, and a reflective journal.",
-        }),
-      },
-      {
-        type: "application/ld+json",
-        children: JSON.stringify({
-          "@context": "https://schema.org",
-          "@type": "Organization",
-          name: "Fireside AI",
-          url: "https://fireside-ai.lovable.app/",
-          logo: "https://fireside-ai.lovable.app/favicon.ico",
-        }),
-      },
-    ],
   }),
+
   component: Threshold,
 });
 
