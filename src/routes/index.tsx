@@ -33,8 +33,25 @@ export const Route = createFileRoute("/")({
   component: Threshold,
 });
 
+const SITE_JSONLD = JSON.stringify({
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: "Fireside AI",
+  url: "https://fireside-ai.lovable.app/",
+  description:
+    "A calm AI companion: private conversation at the Hearth, shared rooms in the Commons, and a reflective journal.",
+});
+
+const ORG_JSONLD = JSON.stringify({
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: "Fireside AI",
+  url: "https://fireside-ai.lovable.app/",
+  logo: "https://fireside-ai.lovable.app/favicon.ico",
+});
 
 function Threshold() {
+
   const navigate = useNavigate();
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
