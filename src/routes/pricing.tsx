@@ -21,28 +21,8 @@ export const Route = createFileRoute("/pricing")({
       { name: "twitter:card", content: "summary" },
     ],
     links: [{ rel: "canonical", href: "https://fireside-ai.lovable.app/pricing" }],
-    scripts: [
-      {
-        type: "application/ld+json",
-        children: JSON.stringify({
-          "@context": "https://schema.org",
-          "@type": "Product",
-          name: "Fireside AI — Warm Ember",
-          description:
-            "Unlimited conversation at the Hearth, unlimited voice, deeper memory and Quiet Rooms in the Commons.",
-          brand: { "@type": "Brand", name: "Fireside AI" },
-          url: "https://fireside-ai.lovable.app/pricing",
-          offers: {
-            "@type": "Offer",
-            price: "6.00",
-            priceCurrency: "GBP",
-            availability: "https://schema.org/PreOrder",
-            url: "https://fireside-ai.lovable.app/pricing",
-          },
-        }),
-      },
-    ],
   }),
+
 
   component: Pricing,
 });
