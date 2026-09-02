@@ -28,35 +28,30 @@ export const Route = createFileRoute("/")({
       { name: "twitter:card", content: "summary_large_image" },
     ],
     links: [{ rel: "canonical", href: "https://fireside-ai.lovable.app/" }],
-    scripts: [
-      {
-        type: "application/ld+json",
-        children: JSON.stringify({
-          "@context": "https://schema.org",
-          "@type": "WebSite",
-          name: "Fireside AI",
-          url: "https://fireside-ai.lovable.app/",
-          description:
-            "A calm AI companion: private conversation at the Hearth, shared rooms in the Commons, and a reflective journal.",
-        }),
-      },
-      {
-        type: "application/ld+json",
-        children: JSON.stringify({
-          "@context": "https://schema.org",
-          "@type": "Organization",
-          name: "Fireside AI",
-          url: "https://fireside-ai.lovable.app/",
-          logo: "https://fireside-ai.lovable.app/favicon.ico",
-        }),
-      },
-    ],
   }),
+
   component: Threshold,
 });
 
+const SITE_JSONLD = JSON.stringify({
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: "Fireside AI",
+  url: "https://fireside-ai.lovable.app/",
+  description:
+    "A calm AI companion: private conversation at the Hearth, shared rooms in the Commons, and a reflective journal.",
+});
+
+const ORG_JSONLD = JSON.stringify({
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: "Fireside AI",
+  url: "https://fireside-ai.lovable.app/",
+  logo: "https://fireside-ai.lovable.app/favicon.ico",
+});
 
 function Threshold() {
+
   const navigate = useNavigate();
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
@@ -106,6 +101,9 @@ function Threshold() {
 
   return (
     <main className="relative min-h-screen bg-background px-6 py-16">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: SITE_JSONLD }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: ORG_JSONLD }} />
+
       <div className="absolute right-4 top-4">
         <ThemeToggle />
       </div>

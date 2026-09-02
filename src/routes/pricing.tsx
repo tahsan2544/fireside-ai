@@ -21,28 +21,8 @@ export const Route = createFileRoute("/pricing")({
       { name: "twitter:card", content: "summary" },
     ],
     links: [{ rel: "canonical", href: "https://fireside-ai.lovable.app/pricing" }],
-    scripts: [
-      {
-        type: "application/ld+json",
-        children: JSON.stringify({
-          "@context": "https://schema.org",
-          "@type": "Product",
-          name: "Fireside AI — Warm Ember",
-          description:
-            "Unlimited conversation at the Hearth, unlimited voice, deeper memory and Quiet Rooms in the Commons.",
-          brand: { "@type": "Brand", name: "Fireside AI" },
-          url: "https://fireside-ai.lovable.app/pricing",
-          offers: {
-            "@type": "Offer",
-            price: "6.00",
-            priceCurrency: "GBP",
-            availability: "https://schema.org/PreOrder",
-            url: "https://fireside-ai.lovable.app/pricing",
-          },
-        }),
-      },
-    ],
   }),
+
 
   component: Pricing,
 });
@@ -63,9 +43,28 @@ const WARM = [
   "Priority when the fire is busy",
 ];
 
+const PRODUCT_JSONLD = JSON.stringify({
+  "@context": "https://schema.org",
+  "@type": "Product",
+  name: "Fireside AI — Warm Ember",
+  description:
+    "Unlimited conversation at the Hearth, unlimited voice, deeper memory and Quiet Rooms in the Commons.",
+  brand: { "@type": "Brand", name: "Fireside AI" },
+  url: "https://fireside-ai.lovable.app/pricing",
+  offers: {
+    "@type": "Offer",
+    price: "6.00",
+    priceCurrency: "GBP",
+    availability: "https://schema.org/PreOrder",
+    url: "https://fireside-ai.lovable.app/pricing",
+  },
+});
+
 function Pricing() {
   return (
     <div className="min-h-screen bg-background">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: PRODUCT_JSONLD }} />
+
       <header className="mx-auto flex max-w-4xl items-center justify-between px-6 py-6">
         <Link to="/" className="flex items-center gap-2">
           <Flame className="h-4 w-4 text-primary" />
