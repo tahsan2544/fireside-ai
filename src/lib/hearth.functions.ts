@@ -124,7 +124,8 @@ export const deleteConversation = createServerFn({ method: "POST" })
     if (!convo || convo.user_id !== userId) throw new Error("Room not found");
 
     // Clean up storage files for this conversation
-    const { data: files } = await supabase.storage.from("chat-attachments").list(data.id);
+    const { data: files, error: listErr } = await supabase.storage.from("chat-attachments").list(data.id);
+    if (listErr) console.error("[deleteConversation] storage list failed", listErr);
     if (files && files.length) {
       await supabase.storage.from("chat-attachments").remove(files.map((f) => `${data.id}/${f.name}`));
     }
@@ -138,8 +139,15 @@ export const renameConversation = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => z.object({ id: z.string().uuid(), title: z.string().min(1).max(80) }).parse(d))
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
-    const { error } = await supabase.from("conversations").update({ title: data.title }).eq("id", data.id).eq("user_id", userId);
+    const { data: updated, error } = await supabase
+      .from("conversations")
+      .update({ title: data.title })
+      .eq("id", data.id)
+      .eq("user_id", userId)
+      .select("id")
+      .maybeSingle();
     if (error) throw error;
+    if (!updated) throw new Error("Room not found");
     return { ok: true };
   });
 
@@ -204,13 +212,10 @@ export const sendMessage = createServerFn({ method: "POST" })
         : plan === "free"
           ? (settings.free_daily_messages ?? 30)
           : 0;
-    const { data: today0 } = await supabase
-      .from("daily_usage")
-      .select("id, message_count")
-      .eq("user_id", userId)
-      .eq("date", todayUTC())
-      .maybeSingle();
-    if (dailyCap > 0 && (today0?.message_count ?? 0) >= dailyCap) {
+    // Reserve the slot atomically so concurrent sends can't slip past the cap.
+    const reserved = await bumpUsage(supabase, { messages: 1 });
+    if (dailyCap > 0 && reserved.message_count > dailyCap) {
+      await bumpUsage(supabase, { messages: -1 });
       throw new Error(
         `That's ${dailyCap} messages today on the free hearth. Come back tomorrow, or open the door wider from Pricing.`
       );
@@ -276,12 +281,6 @@ export const sendMessage = createServerFn({ method: "POST" })
     }
     await supabase.from("conversations").update(updates).eq("id", data.conversationId);
 
-    // Track usage
-    if (today0) {
-      await supabase.from("daily_usage").update({ message_count: today0.message_count + 1 }).eq("id", today0.id);
-    } else {
-      await supabase.from("daily_usage").insert({ user_id: userId, date: todayUTC(), message_count: 1 });
-    }
 
     // Remember durable details (opt-out via settings), never crisis content
     if (profile?.memory_enabled !== false && !safety.crisis && data.content.trim().length > 25) {
@@ -290,6 +289,20 @@ export const sendMessage = createServerFn({ method: "POST" })
 
     return { assistant: assistantRow, crisis: safety.crisis };
   });
+
+// Atomic daily-usage counter (guards against read-modify-write races).
+async function bumpUsage(
+  supabase: any,
+  { messages = 0, voiceSeconds = 0 }: { messages?: number; voiceSeconds?: number }
+): Promise<{ message_count: number; voice_seconds: number }> {
+  const { data, error } = await supabase.rpc("bump_daily_usage", {
+    _messages: messages,
+    _voice_seconds: voiceSeconds,
+  });
+  if (error) throw error;
+  const row = Array.isArray(data) ? data[0] : data;
+  return { message_count: row?.message_count ?? 0, voice_seconds: row?.voice_seconds ?? 0 };
+}
 
 async function readMemories(supabase: any, userId: string): Promise<string[]> {
   const { data } = await supabase
@@ -492,15 +505,11 @@ export const voiceTurn = createServerFn({ method: "POST" })
       .eq("id", userId)
       .maybeSingle();
     const plan = profile?.plan ?? "free";
-    const today = todayUTC();
-    const { data: usageRow } = await supabase
-      .from("daily_usage")
-      .select("id, message_count, voice_seconds")
-      .eq("user_id", userId)
-      .eq("date", today)
-      .maybeSingle();
     const voiceCap = plan === "free" ? (settings.free_daily_voice_seconds ?? 300) : 0;
-    if (voiceCap > 0 && (usageRow?.voice_seconds ?? 0) >= voiceCap) {
+    // Reserve the seconds up front so parallel turns can't overshoot the cap.
+    const reservedVoice = await bumpUsage(supabase, { voiceSeconds: data.seconds });
+    if (voiceCap > 0 && reservedVoice.voice_seconds > voiceCap + data.seconds) {
+      await bumpUsage(supabase, { voiceSeconds: -data.seconds });
       throw new Error(`That's your ${Math.round(voiceCap / 60)} voice minutes for today. Text still works, always.`);
     }
 
@@ -541,14 +550,6 @@ export const voiceTurn = createServerFn({ method: "POST" })
     });
     await supabase.from("conversations").update({ updated_at: new Date().toISOString() }).eq("id", data.conversationId);
 
-    if (usageRow) {
-      await supabase
-        .from("daily_usage")
-        .update({ voice_seconds: (usageRow.voice_seconds ?? 0) + data.seconds })
-        .eq("id", usageRow.id);
-    } else {
-      await supabase.from("daily_usage").insert({ user_id: userId, date: today, message_count: 0, voice_seconds: data.seconds });
-    }
     await supabase.from("voice_sessions").insert({
       user_id: userId,
       conversation_id: data.conversationId,
