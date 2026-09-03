@@ -77,7 +77,9 @@ export function VoiceRoom({
 
   function stopRecording() {
     setRecording(false);
-    recorderRef.current?.stop();
+    const rec = recorderRef.current;
+    recorderRef.current = null;
+    rec?.stop();
   }
 
   async function sendTurn(blob: Blob, mime: string) {
@@ -95,6 +97,8 @@ export function VoiceRoom({
       setTurns((t) => [...t, { role: "user", text: res.transcript }, { role: "assistant", text: res.reply }]);
       onTurnComplete?.();
 
+      // Stop any reply still speaking before starting the next one.
+      audioRef.current?.pause();
       const audio = new Audio(`data:audio/mpeg;base64,${res.audioBase64}`);
       audioRef.current = audio;
       setSpeaking(true);
@@ -124,7 +128,7 @@ export function VoiceRoom({
             <Button
               type="button"
               size="icon"
-              disabled={busy}
+              disabled={busy || speaking}
               onClick={recording ? stopRecording : startRecording}
               className="relative h-24 w-24 rounded-full"
             >
