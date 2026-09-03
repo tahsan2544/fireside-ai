@@ -500,6 +500,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      bump_daily_usage: {
+        Args: { _messages?: number; _voice_seconds?: number }
+        Returns: {
+          message_count: number
+          voice_seconds: number
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
