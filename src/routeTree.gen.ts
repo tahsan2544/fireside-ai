@@ -16,6 +16,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
+import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authenticated/onboarding'
 import { Route as AuthenticatedMemoryRouteImport } from './routes/_authenticated/memory'
 import { Route as AuthenticatedJournalRouteImport } from './routes/_authenticated/journal'
 import { Route as AuthenticatedHearthRouteImport } from './routes/_authenticated/hearth'
@@ -56,6 +57,11 @@ const IndexRoute = IndexRouteImport.update({
 const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedOnboardingRoute = AuthenticatedOnboardingRouteImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedMemoryRoute = AuthenticatedMemoryRouteImport.update({
@@ -106,6 +112,7 @@ export interface FileRoutesByFullPath {
   '/hearth': typeof AuthenticatedHearthRoute
   '/journal': typeof AuthenticatedJournalRoute
   '/memory': typeof AuthenticatedMemoryRoute
+  '/onboarding': typeof AuthenticatedOnboardingRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/chat/$id': typeof AuthenticatedChatIdRoute
 }
@@ -121,6 +128,7 @@ export interface FileRoutesByTo {
   '/hearth': typeof AuthenticatedHearthRoute
   '/journal': typeof AuthenticatedJournalRoute
   '/memory': typeof AuthenticatedMemoryRoute
+  '/onboarding': typeof AuthenticatedOnboardingRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/chat/$id': typeof AuthenticatedChatIdRoute
 }
@@ -138,6 +146,7 @@ export interface FileRoutesById {
   '/_authenticated/hearth': typeof AuthenticatedHearthRoute
   '/_authenticated/journal': typeof AuthenticatedJournalRoute
   '/_authenticated/memory': typeof AuthenticatedMemoryRoute
+  '/_authenticated/onboarding': typeof AuthenticatedOnboardingRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/chat/$id': typeof AuthenticatedChatIdRoute
 }
@@ -155,6 +164,7 @@ export interface FileRouteTypes {
     | '/hearth'
     | '/journal'
     | '/memory'
+    | '/onboarding'
     | '/settings'
     | '/chat/$id'
   fileRoutesByTo: FileRoutesByTo
@@ -170,6 +180,7 @@ export interface FileRouteTypes {
     | '/hearth'
     | '/journal'
     | '/memory'
+    | '/onboarding'
     | '/settings'
     | '/chat/$id'
   id:
@@ -186,6 +197,7 @@ export interface FileRouteTypes {
     | '/_authenticated/hearth'
     | '/_authenticated/journal'
     | '/_authenticated/memory'
+    | '/_authenticated/onboarding'
     | '/_authenticated/settings'
     | '/_authenticated/chat/$id'
   fileRoutesById: FileRoutesById
@@ -250,6 +262,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSettingsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/onboarding': {
+      id: '/_authenticated/onboarding'
+      path: '/onboarding'
+      fullPath: '/onboarding'
+      preLoaderRoute: typeof AuthenticatedOnboardingRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/memory': {
       id: '/_authenticated/memory'
       path: '/memory'
@@ -309,6 +328,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedHearthRoute: typeof AuthenticatedHearthRoute
   AuthenticatedJournalRoute: typeof AuthenticatedJournalRoute
   AuthenticatedMemoryRoute: typeof AuthenticatedMemoryRoute
+  AuthenticatedOnboardingRoute: typeof AuthenticatedOnboardingRoute
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
   AuthenticatedChatIdRoute: typeof AuthenticatedChatIdRoute
 }
@@ -320,6 +340,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedHearthRoute: AuthenticatedHearthRoute,
   AuthenticatedJournalRoute: AuthenticatedJournalRoute,
   AuthenticatedMemoryRoute: AuthenticatedMemoryRoute,
+  AuthenticatedOnboardingRoute: AuthenticatedOnboardingRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
   AuthenticatedChatIdRoute: AuthenticatedChatIdRoute,
 }
