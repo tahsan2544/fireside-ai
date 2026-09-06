@@ -270,7 +270,7 @@ function Commons() {
         <div className="flex-1 space-y-4 overflow-y-auto py-5">
           {visible.length === 0 ? (
             <p className="pt-16 text-center text-sm italic text-muted-foreground">
-              No one has spoken here yet. You could be first.
+              The room is quiet right now. You can talk, listen, or simply sit here.
             </p>
           ) : (
             visible.map((m) => {

@@ -129,9 +129,10 @@ function JournalPage() {
     <AppShell>
       <CrisisNotice open={crisis} onOpenChange={setCrisis} />
       <main className="mx-auto max-w-2xl px-6 py-14">
-        <h1 className="serif text-2xl">Journal</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Private. Never shown in the Commons, never used anywhere else.
+        <h1 className="serif text-3xl">Leave a few words here.</h1>
+        <p className="reading mt-3 text-sm text-muted-foreground">
+          Write whatever is on your mind. You can ask Fireside to reflect on it when you're ready. Private — never
+          shown in the Commons, never used anywhere else.
         </p>
 
         <section className="mt-8 rounded-2xl border border-border/60 bg-card p-5">
@@ -209,7 +210,7 @@ function JournalPage() {
             <Skeleton className="h-20 w-full rounded-xl" />
           </div>
         ) : rows.length === 0 ? (
-          <p className="mt-6 text-sm italic text-muted-foreground">Nothing written yet. There's no hurry.</p>
+          <p className="mt-6 text-sm text-muted-foreground">Nothing written yet. There's no hurry.</p>
         ) : (
           byMonth.map(([month, items]) => (
             <div key={month} className="mt-8">
