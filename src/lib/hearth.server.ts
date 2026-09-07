@@ -80,10 +80,10 @@ async function readAttachmentForModel(a: StoredAttachment): Promise<string> {
 }
 
 
-export async function callHearth(
-  history: { role: "user" | "assistant"; content: string; attachments?: StoredAttachment[] }[],
-  options?: { model?: string; extraSystemPrompt?: string; memories?: string[]; crisis?: boolean }
-): Promise<string> {
+interface HearthOptions { model?: string; extraSystemPrompt?: string; memories?: string[]; crisis?: boolean }
+type HearthHistory = { role: "user" | "assistant"; content: string; attachments?: StoredAttachment[] }[];
+
+async function buildHearthMessages(history: HearthHistory, options?: HearthOptions): Promise<{ messages: ChatMessage[]; model: string }> {
   let system = SYSTEM_PROMPT;
   if (options?.memories?.length) {
     system += `\n\nThings you already know about them (use naturally, never recite as a list, never use them to guilt or nudge them about absence):\n- ${options.memories
