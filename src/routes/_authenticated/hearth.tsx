@@ -77,7 +77,6 @@ function HearthPage() {
   const qc = useQueryClient();
   const ensureFn = useServerFn(ensureHearthRoom);
   const getFn = useServerFn(getConversation);
-  const sendFn = useServerFn(sendMessage);
   const uploadUrlFn = useServerFn(createUploadUrl);
   const genImageFn = useServerFn(generateImage);
   const genDocFn = useServerFn(generateDocument);
