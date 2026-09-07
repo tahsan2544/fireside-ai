@@ -5,7 +5,6 @@ import { useServerFn } from "@tanstack/react-start";
 import {
   ensureHearthRoom,
   getConversation,
-  sendMessage,
   createUploadUrl,
   generateImage,
   generateDocument,
@@ -191,7 +190,7 @@ function HearthPage() {
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages.length, busy]);
+  }, [messages.length, busy, streaming?.length]);
 
   async function handleFilePick(e: React.ChangeEvent<HTMLInputElement>) {
     const files = e.target.files;
@@ -303,14 +302,22 @@ function HearthPage() {
               ))
             )}
 
-            {busy && (
-              <div className="flex justify-start">
-                <p className="rounded-lg border border-border/60 bg-card px-4 py-3 text-sm italic text-muted-foreground">
-                  <span className="mr-2 inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-primary align-middle" />
-                  {status ?? "Gathering my thoughts…"}
-                </p>
-              </div>
-            )}
+            {busy &&
+              (send.isPending && streaming ? (
+                <div className="flex justify-start">
+                  <p className="settle max-w-[min(38rem,90%)] whitespace-pre-wrap break-words rounded-lg rounded-bl-sm border border-border/60 bg-card px-4 py-3 text-[0.95rem] leading-relaxed text-card-foreground">
+                    {streaming}
+                    <span className="ml-1 inline-block h-3.5 w-1.5 animate-pulse rounded-sm bg-primary/70 align-text-bottom" aria-hidden="true" />
+                  </p>
+                </div>
+              ) : (
+                <div className="flex justify-start">
+                  <p className="rounded-lg border border-border/60 bg-card px-4 py-3 text-sm italic text-muted-foreground">
+                    <span className="mr-2 inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-primary align-middle" />
+                    {status ?? "Gathering my thoughts…"}
+                  </p>
+                </div>
+              ))}
             <div ref={bottomRef} />
           </div>
 
