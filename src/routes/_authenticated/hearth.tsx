@@ -89,6 +89,7 @@ function HearthPage() {
   const [uploading, setUploading] = useState(false);
   const [voiceOpen, setVoiceOpen] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
+  const [streaming, setStreaming] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -113,14 +114,50 @@ function HearthPage() {
   );
 
   const send = useMutation({
-    mutationFn: (payload: { content: string; attachments: Pending[] }) =>
-      sendFn({ data: { conversationId: roomId!, content: payload.content, attachments: payload.attachments } }),
+    mutationFn: async (payload: { content: string; attachments: Pending[] }) => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session?.access_token) throw new Error("You're signed out. Refresh the page.");
+      const res = await fetch("/api/hearth/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ conversationId: roomId!, ...payload }),
+      });
+      if (!res.ok || !res.body) {
+        const err = await res.json().catch(() => null);
+        throw new Error(err?.error ?? "Something didn't come through. Try again.");
+      }
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = "";
+      setStreaming("");
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        let idx: number;
+        while ((idx = buf.indexOf("\n\n")) >= 0) {
+          const raw = buf.slice(0, idx);
+          buf = buf.slice(idx + 2);
+          const event = raw.match(/^event: (.+)$/m)?.[1];
+          const dataLine = raw.match(/^data: (.+)$/m)?.[1];
+          if (!event || !dataLine) continue;
+          const data = JSON.parse(dataLine);
+          if (event === "token") setStreaming((s) => (s ?? "") + data.t);
+          else if (event === "error") throw new Error(data.message ?? "Something didn't come through. Try again.");
+          // "done" just marks completion; the saved row arrives via refresh()
+        }
+      }
+    },
     onSuccess: () => {
+      setStreaming(null);
       setPending([]);
       setStatus(null);
       refresh();
     },
     onError: (e) => {
+      setStreaming(null);
       setStatus(null);
       toast.error(e instanceof Error ? e.message : "Something didn't come through. Try again.");
     },

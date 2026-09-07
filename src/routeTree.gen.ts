@@ -23,6 +23,7 @@ import { Route as AuthenticatedHearthRouteImport } from './routes/_authenticated
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedCommonsRouteImport } from './routes/_authenticated/commons'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
+import { Route as ApiHearthChatRouteImport } from './routes/api/hearth/chat'
 import { Route as AuthenticatedChatIdRouteImport } from './routes/_authenticated/chat.$id'
 
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
@@ -94,6 +95,11 @@ const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const ApiHearthChatRoute = ApiHearthChatRouteImport.update({
+  id: '/api/hearth/chat',
+  path: '/api/hearth/chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedChatIdRoute = AuthenticatedChatIdRouteImport.update({
   id: '/chat/$id',
   path: '/chat/$id',
@@ -115,6 +121,7 @@ export interface FileRoutesByFullPath {
   '/onboarding': typeof AuthenticatedOnboardingRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/chat/$id': typeof AuthenticatedChatIdRoute
+  '/api/hearth/chat': typeof ApiHearthChatRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -131,6 +138,7 @@ export interface FileRoutesByTo {
   '/onboarding': typeof AuthenticatedOnboardingRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/chat/$id': typeof AuthenticatedChatIdRoute
+  '/api/hearth/chat': typeof ApiHearthChatRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -149,6 +157,7 @@ export interface FileRoutesById {
   '/_authenticated/onboarding': typeof AuthenticatedOnboardingRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/chat/$id': typeof AuthenticatedChatIdRoute
+  '/api/hearth/chat': typeof ApiHearthChatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -167,6 +176,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/settings'
     | '/chat/$id'
+    | '/api/hearth/chat'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -183,6 +193,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/settings'
     | '/chat/$id'
+    | '/api/hearth/chat'
   id:
     | '__root__'
     | '/'
@@ -200,6 +211,7 @@ export interface FileRouteTypes {
     | '/_authenticated/onboarding'
     | '/_authenticated/settings'
     | '/_authenticated/chat/$id'
+    | '/api/hearth/chat'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -209,6 +221,7 @@ export interface RootRouteChildren {
   HelpRoute: typeof HelpRoute
   PricingRoute: typeof PricingRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  ApiHearthChatRoute: typeof ApiHearthChatRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -311,6 +324,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/api/hearth/chat': {
+      id: '/api/hearth/chat'
+      path: '/api/hearth/chat'
+      fullPath: '/api/hearth/chat'
+      preLoaderRoute: typeof ApiHearthChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/chat/$id': {
       id: '/_authenticated/chat/$id'
       path: '/chat/$id'
@@ -355,6 +375,7 @@ const rootRouteChildren: RootRouteChildren = {
   HelpRoute: HelpRoute,
   PricingRoute: PricingRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  ApiHearthChatRoute: ApiHearthChatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
