@@ -5,7 +5,6 @@ import { useServerFn } from "@tanstack/react-start";
 import {
   ensureHearthRoom,
   getConversation,
-  sendMessage,
   createUploadUrl,
   generateImage,
   generateDocument,
@@ -78,7 +77,6 @@ function HearthPage() {
   const qc = useQueryClient();
   const ensureFn = useServerFn(ensureHearthRoom);
   const getFn = useServerFn(getConversation);
-  const sendFn = useServerFn(sendMessage);
   const uploadUrlFn = useServerFn(createUploadUrl);
   const genImageFn = useServerFn(generateImage);
   const genDocFn = useServerFn(generateDocument);
@@ -89,6 +87,7 @@ function HearthPage() {
   const [uploading, setUploading] = useState(false);
   const [voiceOpen, setVoiceOpen] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
+  const [streaming, setStreaming] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -113,14 +112,50 @@ function HearthPage() {
   );
 
   const send = useMutation({
-    mutationFn: (payload: { content: string; attachments: Pending[] }) =>
-      sendFn({ data: { conversationId: roomId!, content: payload.content, attachments: payload.attachments } }),
+    mutationFn: async (payload: { content: string; attachments: Pending[] }) => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session?.access_token) throw new Error("You're signed out. Refresh the page.");
+      const res = await fetch("/api/hearth/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ conversationId: roomId!, ...payload }),
+      });
+      if (!res.ok || !res.body) {
+        const err = await res.json().catch(() => null);
+        throw new Error(err?.error ?? "Something didn't come through. Try again.");
+      }
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = "";
+      setStreaming("");
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        let idx: number;
+        while ((idx = buf.indexOf("\n\n")) >= 0) {
+          const raw = buf.slice(0, idx);
+          buf = buf.slice(idx + 2);
+          const event = raw.match(/^event: (.+)$/m)?.[1];
+          const dataLine = raw.match(/^data: (.+)$/m)?.[1];
+          if (!event || !dataLine) continue;
+          const data = JSON.parse(dataLine);
+          if (event === "token") setStreaming((s) => (s ?? "") + data.t);
+          else if (event === "error") throw new Error(data.message ?? "Something didn't come through. Try again.");
+          // "done" just marks completion; the saved row arrives via refresh()
+        }
+      }
+    },
     onSuccess: () => {
+      setStreaming(null);
       setPending([]);
       setStatus(null);
       refresh();
     },
     onError: (e) => {
+      setStreaming(null);
       setStatus(null);
       toast.error(e instanceof Error ? e.message : "Something didn't come through. Try again.");
     },
@@ -154,7 +189,7 @@ function HearthPage() {
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages.length, busy]);
+  }, [messages.length, busy, streaming?.length]);
 
   async function handleFilePick(e: React.ChangeEvent<HTMLInputElement>) {
     const files = e.target.files;
@@ -266,14 +301,22 @@ function HearthPage() {
               ))
             )}
 
-            {busy && (
-              <div className="flex justify-start">
-                <p className="rounded-lg border border-border/60 bg-card px-4 py-3 text-sm italic text-muted-foreground">
-                  <span className="mr-2 inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-primary align-middle" />
-                  {status ?? "Gathering my thoughts…"}
-                </p>
-              </div>
-            )}
+            {busy &&
+              (send.isPending && streaming ? (
+                <div className="flex justify-start">
+                  <p className="settle max-w-[min(38rem,90%)] whitespace-pre-wrap break-words rounded-lg rounded-bl-sm border border-border/60 bg-card px-4 py-3 text-[0.95rem] leading-relaxed text-card-foreground">
+                    {streaming}
+                    <span className="ml-1 inline-block h-3.5 w-1.5 animate-pulse rounded-sm bg-primary/70 align-text-bottom" aria-hidden="true" />
+                  </p>
+                </div>
+              ) : (
+                <div className="flex justify-start">
+                  <p className="rounded-lg border border-border/60 bg-card px-4 py-3 text-sm italic text-muted-foreground">
+                    <span className="mr-2 inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-primary align-middle" />
+                    {status ?? "Gathering my thoughts…"}
+                  </p>
+                </div>
+              ))}
             <div ref={bottomRef} />
           </div>
 
