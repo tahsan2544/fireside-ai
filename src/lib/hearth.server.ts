@@ -117,7 +117,61 @@ async function buildHearthMessages(history: HearthHistory, options?: HearthOptio
 
   ];
 
-  return openRouterChat(messages, options?.model || OPENROUTER_MODEL);
+  return { messages, model: options?.model || OPENROUTER_MODEL };
+}
+
+export async function callHearth(history: HearthHistory, options?: HearthOptions): Promise<string> {
+  const { messages, model } = await buildHearthMessages(history, options);
+  return openRouterChat(messages, model);
+}
+
+// Streaming variant: yields text deltas as OpenRouter produces them.
+export async function* streamHearthChat(history: HearthHistory, options?: HearthOptions): AsyncGenerator<string> {
+  const { messages, model } = await buildHearthMessages(history, options);
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) throw new Error("OPENROUTER_API_KEY not configured");
+
+  const res = await fetch(OPENROUTER_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+    body: JSON.stringify({ model, messages, stream: true }),
+  });
+  if (!res.ok || !res.body) {
+    const text = await res.text().catch(() => "");
+    if (res.status === 429) throw new Error("The fire's a little overwhelmed right now — try again in a moment.");
+    if (res.status === 402) throw new Error("OpenRouter credits are exhausted. Add credits on openrouter.ai.");
+    if (res.status === 401) throw new Error("The OpenRouter key was rejected. Check the key and try again.");
+    throw new Error(`AI error (${res.status}): ${text.slice(0, 200)}`);
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buf = "";
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      let idx: number;
+      while ((idx = buf.indexOf("\n\n")) >= 0) {
+        const chunk = buf.slice(0, idx);
+        buf = buf.slice(idx + 2);
+        for (const line of chunk.split("\n")) {
+          if (!line.startsWith("data:")) continue;
+          const data = line.slice(5).trim();
+          if (!data || data === "[DONE]") continue;
+          try {
+            const delta = JSON.parse(data)?.choices?.[0]?.delta?.content;
+            if (typeof delta === "string" && delta) yield delta;
+          } catch {
+            // partial JSON chunk — ignored, next buffer completes it
+          }
+        }
+      }
+    }
+  } finally {
+    reader.cancel().catch(() => {});
+  }
 }
 
 
