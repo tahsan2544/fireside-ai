@@ -5,16 +5,16 @@ Thanks for your interest in contributing! 🔥
 ## Getting Started
 
 1. Fork the repository
-2. Clone your fork: `git clone https://github.com/tahsan2544/FireSide-ai.git`
-3. Install dependencies: `npm install`
+2. Clone your fork: `git clone https://github.com/tahsan2544/fireside-ai.git`
+3. Install dependencies: `bun install` (or `npm install`)
 4. Create a branch for your change: `git checkout -b feature/your-feature-name`
 
 ## Development
 
 ```bash
-npm run dev      # Start the local dev server
-npm run build    # Build for production
-npm run lint     # Run the linter (if configured)
+bun run dev      # Start the local dev server (npm run dev also works)
+bun run build    # Build for production
+bun run lint     # Run the linter
 ```
 
 ## Making Changes
