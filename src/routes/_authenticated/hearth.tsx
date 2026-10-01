@@ -118,7 +118,7 @@ function HearthPage() {
       if (!token) throw new Error("You're signed out. Refresh the page.");
       const res = await fetch("/api/hearth/chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ conversationId: roomId!, ...payload }),
       });
       if (!res.ok || !res.body) {
