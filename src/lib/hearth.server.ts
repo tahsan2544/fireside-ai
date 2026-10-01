@@ -48,6 +48,82 @@ async function openRouterChat(messages: ChatMessage[], model = OPENROUTER_MODEL)
   return content.trim();
 }
 
+// Fallback path through the built-in Lovable AI gateway, used when the
+// OpenRouter key is missing or rejected so the fire never goes silent.
+const LOVABLE_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+const LOVABLE_MODEL = "openai/gpt-5.6-sol";
+
+async function lovableChat(messages: ChatMessage[]): Promise<string> {
+  const apiKey = process.env.LOVABLE_API_KEY;
+  if (!apiKey) throw new Error("AI is not configured");
+  const res = await fetch(LOVABLE_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Lovable-API-Key": apiKey },
+    body: JSON.stringify({ model: LOVABLE_MODEL, messages, reasoning_effort: "none" }),
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    if (res.status === 429) throw new Error("The fire's a little overwhelmed right now — try again in a moment.");
+    throw new Error(`AI error (${res.status}): ${text.slice(0, 200)}`);
+  }
+  const json = await res.json();
+  const content = json?.choices?.[0]?.message?.content;
+  if (typeof content !== "string" || !content.trim()) throw new Error("Empty AI response");
+  return content.trim();
+}
+
+async function* streamSseDeltas(res: Response): AsyncGenerator<string> {
+  if (!res.body) return;
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buf = "";
+  const drain = function* (chunk: string): Generator<string> {
+    for (const line of chunk.split("\n")) {
+      if (!line.startsWith("data:")) continue;
+      const data = line.slice(5).trim();
+      if (!data || data === "[DONE]") continue;
+      try {
+        const delta = JSON.parse(data)?.choices?.[0]?.delta?.content;
+        if (typeof delta === "string" && delta) yield delta;
+      } catch {
+        // partial JSON chunk — ignored, next buffer completes it
+      }
+    }
+  };
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      let idx: number;
+      while ((idx = buf.indexOf("\n\n")) >= 0) {
+        const chunk = buf.slice(0, idx);
+        buf = buf.slice(idx + 2);
+        yield* drain(chunk);
+      }
+    }
+    if (buf.trim()) yield* drain(buf);
+  } finally {
+    reader.cancel().catch(() => {});
+  }
+}
+
+async function* streamLovableChat(messages: ChatMessage[]): AsyncGenerator<string> {
+  const apiKey = process.env.LOVABLE_API_KEY;
+  if (!apiKey) throw new Error("AI is not configured");
+  const res = await fetch(LOVABLE_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Lovable-API-Key": apiKey },
+    body: JSON.stringify({ model: LOVABLE_MODEL, messages, stream: true, reasoning_effort: "none" }),
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    if (res.status === 429) throw new Error("The fire's a little overwhelmed right now — try again in a moment.");
+    throw new Error(`AI error (${res.status}): ${text.slice(0, 200)}`);
+  }
+  yield* streamSseDeltas(res);
+}
+
 const TEXTUAL = /^(text\/|application\/(json|xml|csv|markdown|x-yaml|yaml|javascript|typescript))/;
 
 // Only ever fetch attachments back out of our own Supabase storage endpoint.
@@ -122,7 +198,13 @@ async function buildHearthMessages(history: HearthHistory, options?: HearthOptio
 
 export async function callHearth(history: HearthHistory, options?: HearthOptions): Promise<string> {
   const { messages, model } = await buildHearthMessages(history, options);
-  return openRouterChat(messages, model);
+  try {
+    return await openRouterChat(messages, model);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "";
+    if (/not configured|rejected|exhausted/.test(msg)) return lovableChat(messages);
+    throw e;
+  }
 }
 
 // Streaming variant: yields text deltas as OpenRouter produces them.
@@ -139,39 +221,15 @@ export async function* streamHearthChat(history: HearthHistory, options?: Hearth
   if (!res.ok || !res.body) {
     const text = await res.text().catch(() => "");
     if (res.status === 429) throw new Error("The fire's a little overwhelmed right now — try again in a moment.");
-    if (res.status === 402) throw new Error("OpenRouter credits are exhausted. Add credits on openrouter.ai.");
-    if (res.status === 401) throw new Error("The OpenRouter key was rejected. Check the key and try again.");
+    if (res.status === 401 || res.status === 402 || res.status === 404) {
+      // Key rejected or credits gone — fall back to the built-in AI so chat keeps working.
+      yield* streamLovableChat(messages);
+      return;
+    }
     throw new Error(`AI error (${res.status}): ${text.slice(0, 200)}`);
   }
 
-  const reader = res.body.getReader();
-  const decoder = new TextDecoder();
-  let buf = "";
-  try {
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buf += decoder.decode(value, { stream: true });
-      let idx: number;
-      while ((idx = buf.indexOf("\n\n")) >= 0) {
-        const chunk = buf.slice(0, idx);
-        buf = buf.slice(idx + 2);
-        for (const line of chunk.split("\n")) {
-          if (!line.startsWith("data:")) continue;
-          const data = line.slice(5).trim();
-          if (!data || data === "[DONE]") continue;
-          try {
-            const delta = JSON.parse(data)?.choices?.[0]?.delta?.content;
-            if (typeof delta === "string" && delta) yield delta;
-          } catch {
-            // partial JSON chunk — ignored, next buffer completes it
-          }
-        }
-      }
-    }
-  } finally {
-    reader.cancel().catch(() => {});
-  }
+  yield* streamSseDeltas(res);
 }
 
 
