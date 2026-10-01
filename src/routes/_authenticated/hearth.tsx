@@ -113,10 +113,9 @@ function HearthPage() {
 
   const send = useMutation({
     mutationFn: async (payload: { content: string; attachments: Pending[] }) => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session?.access_token) throw new Error("You're signed out. Refresh the page.");
+      const storageKey = Object.keys(window.localStorage).find((k) => k.endsWith("-auth-token"));
+      const token = storageKey ? (JSON.parse(window.localStorage.getItem(storageKey) ?? "{}")?.access_token as string | undefined) : undefined;
+      if (!token) throw new Error("You're signed out. Refresh the page.");
       const res = await fetch("/api/hearth/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
