@@ -198,7 +198,13 @@ async function buildHearthMessages(history: HearthHistory, options?: HearthOptio
 
 export async function callHearth(history: HearthHistory, options?: HearthOptions): Promise<string> {
   const { messages, model } = await buildHearthMessages(history, options);
-  return openRouterChat(messages, model);
+  try {
+    return await openRouterChat(messages, model);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "";
+    if (/not configured|rejected|exhausted/.test(msg)) return lovableChat(messages);
+    throw e;
+  }
 }
 
 // Streaming variant: yields text deltas as OpenRouter produces them.
@@ -215,39 +221,15 @@ export async function* streamHearthChat(history: HearthHistory, options?: Hearth
   if (!res.ok || !res.body) {
     const text = await res.text().catch(() => "");
     if (res.status === 429) throw new Error("The fire's a little overwhelmed right now — try again in a moment.");
-    if (res.status === 402) throw new Error("OpenRouter credits are exhausted. Add credits on openrouter.ai.");
-    if (res.status === 401) throw new Error("The OpenRouter key was rejected. Check the key and try again.");
+    if (res.status === 401 || res.status === 402 || res.status === 404) {
+      // Key rejected or credits gone — fall back to the built-in AI so chat keeps working.
+      yield* streamLovableChat(messages);
+      return;
+    }
     throw new Error(`AI error (${res.status}): ${text.slice(0, 200)}`);
   }
 
-  const reader = res.body.getReader();
-  const decoder = new TextDecoder();
-  let buf = "";
-  try {
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buf += decoder.decode(value, { stream: true });
-      let idx: number;
-      while ((idx = buf.indexOf("\n\n")) >= 0) {
-        const chunk = buf.slice(0, idx);
-        buf = buf.slice(idx + 2);
-        for (const line of chunk.split("\n")) {
-          if (!line.startsWith("data:")) continue;
-          const data = line.slice(5).trim();
-          if (!data || data === "[DONE]") continue;
-          try {
-            const delta = JSON.parse(data)?.choices?.[0]?.delta?.content;
-            if (typeof delta === "string" && delta) yield delta;
-          } catch {
-            // partial JSON chunk — ignored, next buffer completes it
-          }
-        }
-      }
-    }
-  } finally {
-    reader.cancel().catch(() => {});
-  }
+  yield* streamSseDeltas(res);
 }
 
 
