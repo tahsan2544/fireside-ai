@@ -22,14 +22,14 @@ function sse(e: SseEvent): string {
 // Keep these defaults in sync with SETTINGS_DEFAULTS in hearth.functions.ts.
 const SETTINGS_DEFAULTS = {
   maintenance_mode: false,
-  ai_model: "nvidia/nemotron-3-ultra-550b-a55b:free",
+  ai_model: "openai/gpt-5.6-sol",
   system_prompt: "",
   max_daily_messages: 0,
   free_daily_messages: 30,
 };
 
 async function readSettings(supabase: any) {
-  const { data } = await supabase.from("site_settings").select("*").eq("id", true).maybeSingle();
+  const { data } = await supabase.rpc("get_runtime_site_settings");
   return { ...SETTINGS_DEFAULTS, ...(data ?? {}) } as typeof SETTINGS_DEFAULTS;
 }
 
