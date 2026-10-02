@@ -123,7 +123,22 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <Outlet />
+      <div className="ember-field" aria-hidden="true">
+        {Array.from({ length: 14 }).map((_, i) => (
+          <span
+            key={i}
+            style={{
+              left: `${(i * 37) % 100}%`,
+              animationDuration: `${14 + ((i * 7) % 12)}s`,
+              animationDelay: `${(i * 1.7) % 14}s`,
+              ["--dx" as string]: `${((i % 5) - 2) * 25}px`,
+            }}
+          />
+        ))}
+      </div>
+      <div className="page-enter relative z-[1]">
+        <Outlet />
+      </div>
       <Toaster />
     </QueryClientProvider>
   );
