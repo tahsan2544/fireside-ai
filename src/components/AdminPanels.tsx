@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
-  getSiteSettings,
+  adminGetSiteSettings,
   adminUpdateSiteSettings,
   adminCommonsFeed,
   adminDeleteCommonsMessage,
@@ -28,7 +28,7 @@ const TOGGLES: { key: keyof SiteSettings; label: string; hint: string }[] = [
 
 export function AdminSiteSettings() {
   const qc = useQueryClient();
-  const getFn = useServerFn(getSiteSettings);
+  const getFn = useServerFn(adminGetSiteSettings);
   const saveFn = useServerFn(adminUpdateSiteSettings);
   const settings = useQuery({ queryKey: ["site-settings"], queryFn: () => getFn() });
   const [form, setForm] = useState<SiteSettings | null>(null);

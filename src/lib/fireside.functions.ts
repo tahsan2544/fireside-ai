@@ -233,7 +233,7 @@ export const getUsageSummary = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<UsageSummary> => {
     const { supabase, userId } = context;
-    const [{ data: profile }, { data: usage }, { data: settings }, { count: journalCount }, { count: memCount }] =
+    const [{ data: profile }, { data: usage }, { data: settingsRaw }, { count: journalCount }, { count: memCount }] =
       await Promise.all([
         supabase.from("profiles").select("plan").eq("id", userId).maybeSingle(),
         supabase
@@ -242,10 +242,11 @@ export const getUsageSummary = createServerFn({ method: "GET" })
           .eq("user_id", userId)
           .eq("date", todayUTC())
           .maybeSingle(),
-        supabase.from("site_settings").select("free_daily_messages, free_daily_voice_seconds").eq("id", true).maybeSingle(),
+        supabase.rpc("get_runtime_site_settings"),
         supabase.from("journal_entries").select("*", { count: "exact", head: true }).eq("user_id", userId),
         supabase.from("memory_facts").select("*", { count: "exact", head: true }).eq("user_id", userId),
       ]);
+    const settings = (settingsRaw ?? null) as { free_daily_messages?: number; free_daily_voice_seconds?: number } | null;
     const plan = profile?.plan ?? "free";
     const paid = plan !== "free";
     return {

@@ -19,51 +19,23 @@ interface ChatMessage {
   content: any;
 }
 
-const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
-const OPENROUTER_MODEL = "nvidia/nemotron-3-ultra-550b-a55b:free";
-
-async function openRouterChat(messages: ChatMessage[], model = OPENROUTER_MODEL): Promise<string> {
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  if (!apiKey) throw new Error("OPENROUTER_API_KEY not configured");
-
-  const res = await fetch(OPENROUTER_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({ model, messages }),
-  });
-
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    if (res.status === 429) throw new Error("The fire's a little overwhelmed right now — try again in a moment.");
-    if (res.status === 402) throw new Error("OpenRouter credits are exhausted. Add credits on openrouter.ai.");
-    if (res.status === 401) throw new Error("The OpenRouter key was rejected. Check the key and try again.");
-    throw new Error(`AI error (${res.status}): ${text.slice(0, 200)}`);
-  }
-  const json = await res.json();
-  const content = json?.choices?.[0]?.message?.content;
-  if (typeof content !== "string" || !content.trim()) throw new Error("Empty AI response");
-  return content.trim();
-}
-
 // Fallback path through the built-in Lovable AI gateway, used when the
 // OpenRouter key is missing or rejected so the fire never goes silent.
 const LOVABLE_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 const LOVABLE_MODEL = "openai/gpt-5.6-sol";
 
-async function lovableChat(messages: ChatMessage[]): Promise<string> {
+async function lovableChat(messages: ChatMessage[], model = LOVABLE_MODEL): Promise<string> {
   const apiKey = process.env.LOVABLE_API_KEY;
   if (!apiKey) throw new Error("AI is not configured");
   const res = await fetch(LOVABLE_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json", "Lovable-API-Key": apiKey },
-    body: JSON.stringify({ model: LOVABLE_MODEL, messages, reasoning_effort: "none" }),
+    body: JSON.stringify({ model, messages, reasoning_effort: "none" }),
   });
   if (!res.ok) {
     const text = await res.text().catch(() => "");
     if (res.status === 429) throw new Error("The fire's a little overwhelmed right now — try again in a moment.");
+    if (res.status === 402) throw new Error("The AI credits for this fire have run out. The keeper can top them up in workspace settings.");
     throw new Error(`AI error (${res.status}): ${text.slice(0, 200)}`);
   }
   const json = await res.json();
@@ -108,17 +80,18 @@ async function* streamSseDeltas(res: Response): AsyncGenerator<string> {
   }
 }
 
-async function* streamLovableChat(messages: ChatMessage[]): AsyncGenerator<string> {
+async function* streamLovableChat(messages: ChatMessage[], model = LOVABLE_MODEL): AsyncGenerator<string> {
   const apiKey = process.env.LOVABLE_API_KEY;
   if (!apiKey) throw new Error("AI is not configured");
   const res = await fetch(LOVABLE_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json", "Lovable-API-Key": apiKey },
-    body: JSON.stringify({ model: LOVABLE_MODEL, messages, stream: true, reasoning_effort: "none" }),
+    body: JSON.stringify({ model, messages, stream: true, reasoning_effort: "none" }),
   });
   if (!res.ok) {
     const text = await res.text().catch(() => "");
     if (res.status === 429) throw new Error("The fire's a little overwhelmed right now — try again in a moment.");
+    if (res.status === 402) throw new Error("The AI credits for this fire have run out. The keeper can top them up in workspace settings.");
     throw new Error(`AI error (${res.status}): ${text.slice(0, 200)}`);
   }
   yield* streamSseDeltas(res);
@@ -193,43 +166,19 @@ async function buildHearthMessages(history: HearthHistory, options?: HearthOptio
 
   ];
 
-  return { messages, model: options?.model || OPENROUTER_MODEL };
+  const wanted = options?.model ?? "";
+  return { messages, model: /^(openai|google)\//.test(wanted) ? wanted : LOVABLE_MODEL };
 }
 
+// Built-in Lovable AI is the primary engine for every room.
 export async function callHearth(history: HearthHistory, options?: HearthOptions): Promise<string> {
   const { messages, model } = await buildHearthMessages(history, options);
-  try {
-    return await openRouterChat(messages, model);
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : "";
-    if (/not configured|rejected|exhausted/.test(msg)) return lovableChat(messages);
-    throw e;
-  }
+  return lovableChat(messages, model);
 }
 
-// Streaming variant: yields text deltas as OpenRouter produces them.
 export async function* streamHearthChat(history: HearthHistory, options?: HearthOptions): AsyncGenerator<string> {
   const { messages, model } = await buildHearthMessages(history, options);
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  if (!apiKey) throw new Error("OPENROUTER_API_KEY not configured");
-
-  const res = await fetch(OPENROUTER_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify({ model, messages, stream: true }),
-  });
-  if (!res.ok || !res.body) {
-    const text = await res.text().catch(() => "");
-    if (res.status === 429) throw new Error("The fire's a little overwhelmed right now — try again in a moment.");
-    if (res.status === 401 || res.status === 402 || res.status === 404) {
-      // Key rejected or credits gone — fall back to the built-in AI so chat keeps working.
-      yield* streamLovableChat(messages);
-      return;
-    }
-    throw new Error(`AI error (${res.status}): ${text.slice(0, 200)}`);
-  }
-
-  yield* streamSseDeltas(res);
+  yield* streamLovableChat(messages, model);
 }
 
 
@@ -269,7 +218,7 @@ export async function generateHearthImage(prompt: string): Promise<{ base64: str
 
 // ---------- Document generation (markdown) ----------
 export async function generateHearthDocument(prompt: string): Promise<string> {
-  return openRouterChat([
+  return lovableChat([
     {
       role: "system",
       content:

@@ -1,16 +1,17 @@
 // Server-only AI helpers for journal prompts, reflections and memory extraction.
 
-const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
-const DEFAULT_MODEL = "nvidia/nemotron-3-ultra-550b-a55b:free";
+const AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+const DEFAULT_MODEL = "openai/gpt-5.6-sol";
 
 async function chat(system: string, user: string, model = DEFAULT_MODEL): Promise<string> {
-  const apiKey = process.env.OPENROUTER_API_KEY;
+  const apiKey = process.env.LOVABLE_API_KEY;
   if (!apiKey) throw new Error("The AI isn't connected right now.");
-  const res = await fetch(OPENROUTER_URL, {
+  const res = await fetch(AI_URL, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+    headers: { "Content-Type": "application/json", "Lovable-API-Key": apiKey },
     body: JSON.stringify({
       model,
+      reasoning_effort: "none",
       messages: [
         { role: "system", content: system },
         { role: "user", content: user },

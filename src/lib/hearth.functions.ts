@@ -721,8 +721,8 @@ const SETTINGS_DEFAULTS: SiteSettings = {
   quiet_rooms_enabled: true,
 };
 
-async function readSettings(supabase: any): Promise<SiteSettings> {
-  const { data } = await supabase.from("site_settings").select("*").eq("id", true).maybeSingle();
+async function readSettings(supabase: any, publicOnly = false): Promise<SiteSettings> {
+  const { data } = await supabase.rpc(publicOnly ? "get_public_site_settings" : "get_runtime_site_settings");
   return { ...SETTINGS_DEFAULTS, ...(data ?? {}) } as SiteSettings;
 }
 
@@ -746,8 +746,16 @@ export const getSiteSettings = createServerFn({ method: "GET" }).handler(async (
       },
     },
   });
-  return readSettings(client);
+  return readSettings(client, true);
 });
+
+export const adminGetSiteSettings = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<SiteSettings> => {
+    const { data: isAdmin } = await context.supabase.rpc("has_role", { _user_id: context.userId, _role: "admin" });
+    if (!isAdmin) throw new Error("Not allowed");
+    return readSettings(context.supabase);
+  });
 
 export const adminUpdateSiteSettings = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
