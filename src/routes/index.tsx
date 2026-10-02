@@ -111,7 +111,7 @@ function Threshold() {
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        navigate({ to: "/hearth" });
+        navigate({ to: window.localStorage.getItem("fireside-onboarded") ? "/hearth" : "/onboarding" });
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Something didn't come through. Try again.");
