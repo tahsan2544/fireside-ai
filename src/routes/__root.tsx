@@ -108,6 +108,7 @@ function RootShell({ children }: { children: ReactNode }) {
   );
 }
 
+// Root shell: ambient embers + page entrance around every route.
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const router = useRouter();
