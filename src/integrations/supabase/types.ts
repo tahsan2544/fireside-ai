@@ -507,6 +507,8 @@ export type Database = {
           voice_seconds: number
         }[]
       }
+      get_public_site_settings: { Args: never; Returns: Json }
+      get_runtime_site_settings: { Args: never; Returns: Json }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
