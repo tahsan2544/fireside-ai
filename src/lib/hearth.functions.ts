@@ -213,9 +213,9 @@ export const sendMessage = createServerFn({ method: "POST" })
           ? (settings.free_daily_messages ?? 30)
           : 0;
     // Reserve the slot atomically so concurrent sends can't slip past the cap.
-    const reserved = await bumpUsage(supabase, { messages: 1 });
+    const reserved = await bumpUsage(userId, { messages: 1 });
     if (dailyCap > 0 && reserved.message_count > dailyCap) {
-      await bumpUsage(supabase, { messages: -1 });
+      await bumpUsage(userId, { messages: -1 });
       throw new Error(
         `That's ${dailyCap} messages today on the free hearth. Come back tomorrow, or open the door wider from Pricing.`
       );
@@ -291,11 +291,14 @@ export const sendMessage = createServerFn({ method: "POST" })
   });
 
 // Atomic daily-usage counter (guards against read-modify-write races).
+// Runs with server privileges only — users can never call the counter directly.
 async function bumpUsage(
-  supabase: any,
+  userId: string,
   { messages = 0, voiceSeconds = 0 }: { messages?: number; voiceSeconds?: number }
 ): Promise<{ message_count: number; voice_seconds: number }> {
-  const { data, error } = await supabase.rpc("bump_daily_usage", {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data, error } = await supabaseAdmin.rpc("bump_daily_usage_for", {
+    _user_id: userId,
     _messages: messages,
     _voice_seconds: voiceSeconds,
   });
@@ -511,9 +514,9 @@ export const voiceTurn = createServerFn({ method: "POST" })
     const approxBytes = Math.floor((data.audioBase64.length * 3) / 4);
     const billedSeconds = Math.min(600, Math.max(1, data.seconds, Math.ceil(approxBytes / 4000)));
     // Reserve the seconds up front so parallel turns can't overshoot the cap.
-    const reservedVoice = await bumpUsage(supabase, { voiceSeconds: billedSeconds });
+    const reservedVoice = await bumpUsage(userId, { voiceSeconds: billedSeconds });
     if (voiceCap > 0 && reservedVoice.voice_seconds > voiceCap) {
-      await bumpUsage(supabase, { voiceSeconds: -billedSeconds });
+      await bumpUsage(userId, { voiceSeconds: -billedSeconds });
       throw new Error(`That's your ${Math.round(voiceCap / 60)} voice minutes for today. Text still works, always.`);
     }
 
