@@ -33,8 +33,9 @@ async function readSettings(supabase: any) {
   return { ...SETTINGS_DEFAULTS, ...(data ?? {}) } as typeof SETTINGS_DEFAULTS;
 }
 
-async function bumpUsage(supabase: any, messages: number): Promise<number> {
-  const { data, error } = await supabase.rpc("bump_daily_usage", { _messages: messages, _voice_seconds: 0 });
+async function bumpUsage(userId: string, messages: number): Promise<number> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data, error } = await supabaseAdmin.rpc("bump_daily_usage_for", { _user_id: userId, _messages: messages, _voice_seconds: 0 });
   if (error) throw error;
   const row = Array.isArray(data) ? data[0] : data;
   return row?.message_count ?? 0;
@@ -103,9 +104,9 @@ export async function* streamChat(supabase: any, userId: string, input: StreamCh
         : plan === "free"
           ? (settings.free_daily_messages ?? 30)
           : 0;
-    const reserved = await bumpUsage(supabase, 1);
+    const reserved = await bumpUsage(userId, 1);
     if (dailyCap > 0 && reserved > dailyCap) {
-      await bumpUsage(supabase, -1);
+      await bumpUsage(userId, -1);
       yield fail(`That's ${dailyCap} messages today on the free hearth. Come back tomorrow, or open the door wider from Pricing.`);
       return;
     }

@@ -507,6 +507,13 @@ export type Database = {
           voice_seconds: number
         }[]
       }
+      bump_daily_usage_for: {
+        Args: { _messages?: number; _user_id: string; _voice_seconds?: number }
+        Returns: {
+          message_count: number
+          voice_seconds: number
+        }[]
+      }
       get_public_site_settings: { Args: never; Returns: Json }
       get_runtime_site_settings: { Args: never; Returns: Json }
       has_role: {
