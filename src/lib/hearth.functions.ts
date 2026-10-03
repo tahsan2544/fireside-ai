@@ -557,7 +557,7 @@ export const voiceTurn = createServerFn({ method: "POST" })
     await supabase.from("voice_sessions").insert({
       user_id: userId,
       conversation_id: data.conversationId,
-      seconds: data.seconds,
+      seconds: billedSeconds,
       turns: 1,
     });
 
