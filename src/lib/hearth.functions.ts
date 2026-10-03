@@ -506,10 +506,14 @@ export const voiceTurn = createServerFn({ method: "POST" })
       .maybeSingle();
     const plan = profile?.plan ?? "free";
     const voiceCap = plan === "free" ? (settings.free_daily_voice_seconds ?? 300) : 0;
+    // Never trust the client's duration alone: estimate from the audio size
+    // (compressed speech is at most ~4 KB per second) and bill whichever is larger.
+    const approxBytes = Math.floor((data.audioBase64.length * 3) / 4);
+    const billedSeconds = Math.min(600, Math.max(1, data.seconds, Math.ceil(approxBytes / 4000)));
     // Reserve the seconds up front so parallel turns can't overshoot the cap.
-    const reservedVoice = await bumpUsage(supabase, { voiceSeconds: data.seconds });
-    if (voiceCap > 0 && reservedVoice.voice_seconds > voiceCap + data.seconds) {
-      await bumpUsage(supabase, { voiceSeconds: -data.seconds });
+    const reservedVoice = await bumpUsage(supabase, { voiceSeconds: billedSeconds });
+    if (voiceCap > 0 && reservedVoice.voice_seconds > voiceCap) {
+      await bumpUsage(supabase, { voiceSeconds: -billedSeconds });
       throw new Error(`That's your ${Math.round(voiceCap / 60)} voice minutes for today. Text still works, always.`);
     }
 
