@@ -28,7 +28,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { Check, Pencil, Trash2, X } from "lucide-react";
+import { Brain, Check, Pencil, Plus, Trash2, X } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/memory")({
   head: () => ({
@@ -120,7 +120,7 @@ function MemoryPage() {
   })).filter((g) => g.items.length > 0);
 
   const renderRow = (f: Fact) => (
-    <li key={f.id} className="surface-2 flex items-start gap-2 rounded-lg border border-border/60 px-4 py-3">
+    <li key={f.id} className="settle group surface-2 warm-border flex items-start gap-2 rounded-xl px-4 py-3">
       {editing === f.id ? (
         <>
           <Label htmlFor={`edit-${f.id}`} className="sr-only">
@@ -179,14 +179,25 @@ function MemoryPage() {
 
   return (
     <AppShell>
-      <main className="mx-auto max-w-2xl px-6 py-14">
-        <h1 className="serif text-3xl">Memories</h1>
+      <main className="relative mx-auto max-w-2xl px-6 py-14">
+        <div className="hearth-glow-soft ambient pointer-events-none absolute inset-x-0 top-0 h-56 rotate-180" aria-hidden="true" />
+        <div className="relative flex items-center gap-3">
+          <span className="flex h-11 w-11 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <Brain className="h-5 w-5" aria-hidden="true" />
+          </span>
+          <div>
+            <h1 className="serif text-3xl">Memories</h1>
+            <p className="text-xs text-muted-foreground">
+              {rows.length} {rows.length === 1 ? "thing" : "things"} kept
+            </p>
+          </div>
+        </div>
         <p className="reading mt-3 text-sm text-muted-foreground">
           Fireside remembers only what you choose to keep. Everything kept is listed here — edit it, delete it, or clear
           all of it at once.
         </p>
 
-        <div className="mt-8 flex items-center justify-between rounded-lg border border-border/60 bg-accent/25 px-4 py-3">
+        <div className="mt-8 flex items-center justify-between rounded-xl border border-border/60 bg-accent/25 px-4 py-3 transition-colors">
           <div>
             <p className="text-sm">Let Fireside remember</p>
             <p className="text-xs text-muted-foreground">Turn this off and nothing new is kept.</p>
@@ -198,7 +209,7 @@ function MemoryPage() {
           />
         </div>
 
-        <div className="mt-8">
+        <div className="surface-1 mt-6 rounded-xl border border-border/60 p-4">
           <Label htmlFor="new-memory" className="text-xs text-muted-foreground">
             Add something to remember
           </Label>
@@ -207,6 +218,7 @@ function MemoryPage() {
               id="new-memory"
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && draft.trim() && add.mutate(draft.trim())}
               placeholder="Something you'd like remembered…"
               maxLength={300}
             />
@@ -226,8 +238,8 @@ function MemoryPage() {
                   </option>
                 ))}
               </select>
-              <Button disabled={!draft.trim() || add.isPending} onClick={() => add.mutate(draft.trim())}>
-                Keep
+              <Button disabled={!draft.trim() || add.isPending} onClick={() => add.mutate(draft.trim())} className="rounded-full">
+                <Plus className="h-4 w-4" /> Keep
               </Button>
             </div>
           </div>
@@ -240,14 +252,17 @@ function MemoryPage() {
               <Skeleton className="h-16 w-full rounded-lg" />
             </div>
           ) : rows.length === 0 ? (
-            <div>
-              <h2 className="serif text-xl">Nothing saved yet.</h2>
-              <p className="mt-2 text-sm text-muted-foreground">Fireside only remembers what you ask it to.</p>
+            <div className="settle rounded-xl border border-dashed border-border/70 px-6 py-12 text-center">
+              <Brain className="mx-auto h-6 w-6 text-primary/70" aria-hidden="true" />
+              <h2 className="serif mt-4 text-xl">Nothing kept yet.</h2>
+              <p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">
+                As you talk at the Hearth, small things worth remembering will appear here — or add one yourself above.
+              </p>
             </div>
           ) : (
             grouped.map((g) => (
               <section key={g.key}>
-                <h2 className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{g.label}</h2>
+                <h2 className="flex items-center gap-2 text-xs uppercase tracking-[0.18em] text-muted-foreground">{g.label}<span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] text-primary">{g.items.length}</span></h2>
                 <ul className="mt-3 space-y-2">{g.items.map(renderRow)}</ul>
               </section>
             ))
