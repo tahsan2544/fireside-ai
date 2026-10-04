@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getPrefs, updatePrefs, getUsageSummary } from "@/lib/fireside.functions";
 import { AppShell } from "@/components/AppShell";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { AI_VOICES } from "@/lib/voices";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,7 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 import { DISCLAIMER } from "@/lib/safety";
 import { toast } from "sonner";
-import { Loader2, LogOut, Brain, NotebookPen } from "lucide-react";
+import { Loader2, LogOut, Brain, NotebookPen, UserRound, Moon, Volume2, ShieldCheck, Activity, ArrowUpRight } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/settings")({
   head: () => ({
@@ -30,6 +31,7 @@ export const Route = createFileRoute("/_authenticated/settings")({
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
+      { name: "robots", content: "noindex, nofollow" },
     ],
   }),
   component: SettingsPage,
@@ -82,12 +84,15 @@ function SettingsPage() {
 
   return (
     <AppShell>
-      <main className="mx-auto max-w-xl px-6 py-16">
-        <h1 className="serif text-2xl">Settings</h1>
-        <p className="mt-2 text-sm text-muted-foreground">Small things, quietly kept.</p>
+      <main className="mx-auto max-w-3xl px-5 pb-20 pt-12 sm:px-8 sm:pt-16">
+        <div className="border-b border-border/60 pb-9">
+          <p className="text-xs uppercase tracking-widest text-primary">Your space</p>
+          <h1 className="serif mt-3 text-4xl">Settings</h1>
+          <p className="mt-3 text-sm text-muted-foreground">Make this place feel like yours.</p>
+        </div>
 
-        <section className="mt-10 space-y-4">
-          <h2 className="text-xs uppercase tracking-wide text-muted-foreground">You</h2>
+        <section className="settings-section mt-10 space-y-5" aria-labelledby="profile-heading">
+          <h2 id="profile-heading" className="flex items-center gap-3 serif text-xl"><UserRound className="h-5 w-5 text-primary" /> You</h2>
           <div>
             <Label htmlFor="display" className="text-xs text-muted-foreground">
               Display name
@@ -108,37 +113,48 @@ function SettingsPage() {
           <Button
             onClick={() => save.mutate()}
             disabled={save.isPending || !name.trim() || name.trim() === prefs.data?.displayName}
-            className="w-full rounded-full"
+            className="rounded-full px-6"
           >
             {save.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
           </Button>
         </section>
 
-        <section className="mt-12 space-y-3">
-          <h2 className="text-xs uppercase tracking-wide text-muted-foreground">The voice Fireside speaks in</h2>
+        <section className="settings-section mt-10 space-y-4" aria-labelledby="appearance-heading">
+          <h2 id="appearance-heading" className="flex items-center gap-3 serif text-xl"><Moon className="h-5 w-5 text-primary" /> Appearance</h2>
+          <div className="flex items-center justify-between gap-4 border-b border-border/50 py-3">
+            <div><p className="text-sm">Light or dark</p><p className="text-xs text-muted-foreground">Choose what feels right for your eyes.</p></div>
+            <ThemeToggle className="border border-border/70 bg-card" />
+          </div>
+        </section>
+
+        <section className="settings-section mt-10 space-y-4" aria-labelledby="voice-heading">
+          <h2 id="voice-heading" className="flex items-center gap-3 serif text-xl"><Volume2 className="h-5 w-5 text-primary" /> The voice Fireside speaks in</h2>
           <div className="grid gap-2 sm:grid-cols-3">
             {AI_VOICES.map((v) => {
               const active = (prefs.data?.voiceId ?? AI_VOICES[0].id) === v.id;
               return (
-                <button
+                <Button
+                  type="button"
+                  variant="outline"
                   key={v.id}
                   onClick={() => patch.mutate({ voiceId: v.id })}
+                  disabled={prefs.isLoading || patch.isPending}
+                  aria-pressed={active}
                   className={
                     active
-                      ? "rounded-xl border border-primary/50 bg-primary/10 px-4 py-3 text-left"
-                      : "rounded-xl border border-border/60 bg-card px-4 py-3 text-left hover:border-primary/40"
+                      ? "h-auto min-h-18 justify-start whitespace-normal rounded-md border-primary bg-primary/10 px-4 py-3 text-left"
+                      : "h-auto min-h-18 justify-start whitespace-normal rounded-md border-border/60 bg-card px-4 py-3 text-left hover:border-primary/40"
                   }
                 >
-                  <p className="text-sm">{v.name}</p>
-                  <p className="text-xs text-muted-foreground">{v.note}</p>
-                </button>
+                  <span><span className="block text-sm">{v.name}</span><span className="block text-xs font-normal text-muted-foreground">{v.note}</span></span>
+                </Button>
               );
             })}
           </div>
         </section>
 
-        <section className="mt-12 space-y-3">
-          <h2 className="text-xs uppercase tracking-wide text-muted-foreground">Memory &amp; reflections</h2>
+        <section className="settings-section mt-10 space-y-3" aria-labelledby="memory-heading">
+          <h2 id="memory-heading" className="flex items-center gap-3 serif text-xl"><Brain className="h-5 w-5 text-primary" /> Memory &amp; reflections</h2>
 
           <div className="flex items-center justify-between gap-3 rounded-xl bg-accent/30 px-4 py-3">
             <div>
@@ -149,6 +165,7 @@ function SettingsPage() {
               aria-label="Toggle memory"
               checked={prefs.data?.memoryEnabled ?? true}
               onCheckedChange={(v) => patch.mutate({ memoryEnabled: v })}
+              disabled={prefs.isLoading || patch.isPending}
             />
           </div>
 
@@ -161,33 +178,34 @@ function SettingsPage() {
               aria-label="Toggle journal reflections"
               checked={prefs.data?.reflectionOptin ?? false}
               onCheckedChange={(v) => patch.mutate({ reflectionOptin: v })}
+              disabled={prefs.isLoading || patch.isPending}
             />
           </div>
 
           <div className="grid gap-2 sm:grid-cols-2">
             <Link
               to="/memory"
-              className="flex items-center gap-3 rounded-xl border border-border/60 bg-card px-4 py-3 text-sm hover:border-primary/40"
+              className="flex items-center gap-3 rounded-md border border-border/60 bg-card px-4 py-3 text-sm hover:border-primary/40"
             >
               <Brain className="h-4 w-4 text-primary" />
-              What Fireside remembers
+              What Fireside remembers <ArrowUpRight className="ml-auto h-4 w-4 text-muted-foreground" />
             </Link>
             <Link
               to="/journal"
-              className="flex items-center gap-3 rounded-xl border border-border/60 bg-card px-4 py-3 text-sm hover:border-primary/40"
+              className="flex items-center gap-3 rounded-md border border-border/60 bg-card px-4 py-3 text-sm hover:border-primary/40"
             >
               <NotebookPen className="h-4 w-4 text-primary" />
-              Your journal
+              Your journal <ArrowUpRight className="ml-auto h-4 w-4 text-muted-foreground" />
             </Link>
           </div>
         </section>
 
-        <section className="mt-12 space-y-3">
-          <h2 className="text-xs uppercase tracking-wide text-muted-foreground">Today</h2>
+        <section className="settings-section mt-10 space-y-3" aria-labelledby="usage-heading">
+          <h2 id="usage-heading" className="flex items-center gap-3 serif text-xl"><Activity className="h-5 w-5 text-primary" /> Today</h2>
           {usage.isLoading || !u ? (
             <Skeleton className="h-24 w-full rounded-xl" />
           ) : (
-            <div className="rounded-xl border border-border/60 bg-card p-5 text-sm">
+            <div className="rounded-md border border-border/60 bg-card p-5 text-sm">
               <p className="text-muted-foreground">
                 Plan: <span className="text-foreground">{u.plan === "free" ? "By the fire (free)" : "Warm Ember"}</span>
               </p>
@@ -195,6 +213,7 @@ function SettingsPage() {
                 Messages today: {u.messagesToday}
                 {u.messageLimit ? ` of ${u.messageLimit}` : " — unlimited"}
               </p>
+              {u.messageLimit > 0 && <div role="progressbar" aria-label="Messages used today" aria-valuenow={Math.min(u.messagesToday, u.messageLimit)} aria-valuemin={0} aria-valuemax={u.messageLimit} className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary transition-[width] duration-700" style={{ width: `${Math.min(100, u.messagesToday / u.messageLimit * 100)}%` }} /></div>}
               <p className="mt-1 text-muted-foreground">
                 Voice today: {Math.round(u.voiceSecondsToday / 60)} min
                 {u.voiceSecondsLimit ? ` of ${Math.round(u.voiceSecondsLimit / 60)}` : " — unlimited"}
@@ -209,8 +228,8 @@ function SettingsPage() {
           )}
         </section>
 
-        <section className="mt-12 space-y-3">
-          <h2 className="text-xs uppercase tracking-wide text-muted-foreground">Your data</h2>
+        <section className="settings-section mt-10 space-y-3" aria-labelledby="privacy-heading">
+          <h2 id="privacy-heading" className="flex items-center gap-3 serif text-xl"><ShieldCheck className="h-5 w-5 text-primary" /> Your data</h2>
           <p className="text-xs leading-relaxed text-muted-foreground">
             Fireside stores your account details, your conversations, your journal entries and the short facts it
             remembers about you. Nothing is sold, and nothing is used to nudge you back. You can clear memory from the
@@ -220,7 +239,7 @@ function SettingsPage() {
           <p className="text-xs text-muted-foreground">{DISCLAIMER}</p>
         </section>
 
-        <Button onClick={signOut} variant="outline" className="mt-10 w-full rounded-full">
+        <Button onClick={signOut} variant="outline" className="mt-10 rounded-full px-6">
           <LogOut className="mr-2 h-4 w-4" /> Log Out
         </Button>
       </main>
