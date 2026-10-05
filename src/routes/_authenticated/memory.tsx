@@ -42,6 +42,7 @@ export const Route = createFileRoute("/_authenticated/memory")({
       { property: "og:description", content: "See, edit or delete everything Fireside remembers about you." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
+      { name: "robots", content: "noindex, nofollow" },
     ],
   }),
   component: MemoryPage,

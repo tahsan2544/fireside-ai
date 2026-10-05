@@ -12,5 +12,14 @@ Allow: /
 
 User-agent: *
 Allow: /
+Disallow: /admin
+Disallow: /chat/
+Disallow: /dashboard
+Disallow: /hearth
+Disallow: /commons
+Disallow: /settings
+Disallow: /memory
+Disallow: /journal
+Disallow: /onboarding
 
 Sitemap: https://fireside-ai.lovable.app/sitemap.xml

@@ -30,6 +30,7 @@ export const Route = createFileRoute("/_authenticated/journal")({
       { property: "og:description", content: "A private journal with gentle daily prompts, mood tags and optional AI reflection." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
+      { name: "robots", content: "noindex, nofollow" },
     ],
   }),
   component: JournalPage,

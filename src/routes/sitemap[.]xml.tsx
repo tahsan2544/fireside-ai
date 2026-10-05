@@ -4,6 +4,7 @@ const BASE = "https://fireside-ai.lovable.app";
 const PAGES = [
   { path: "/", priority: "1.0", freq: "weekly" },
   { path: "/pricing", priority: "0.8", freq: "monthly" },
+  { path: "/help", priority: "0.6", freq: "monthly" },
 ];
 
 export const Route = createFileRoute("/sitemap.xml")({
