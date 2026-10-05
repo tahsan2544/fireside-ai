@@ -20,6 +20,7 @@ export const Route = createFileRoute("/_authenticated/onboarding")({
       { property: "og:description", content: "A short, optional welcome before your first conversation." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
+      { name: "robots", content: "noindex, nofollow" },
     ],
   }),
   component: Onboarding,

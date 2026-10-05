@@ -21,6 +21,15 @@ import { ArrowLeft, Send, Paperclip, ImagePlus, FileText, Trash2, X, Download, M
 
 
 export const Route = createFileRoute("/_authenticated/chat/$id")({
+  head: () => ({ meta: [
+    { title: "Your conversation — Fireside AI" },
+    { name: "description", content: "A private conversation at the Hearth." },
+    { property: "og:title", content: "Your conversation — Fireside AI" },
+    { property: "og:description", content: "A private conversation at the Hearth." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary" },
+    { name: "robots", content: "noindex, nofollow" },
+  ] }),
   component: Chat,
 });
 

@@ -29,6 +29,7 @@ export const Route = createFileRoute("/_authenticated/hearth")({
       { property: "og:description", content: "A distraction-free one-on-one conversation with a gentle AI companion." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
+      { name: "robots", content: "noindex, nofollow" },
     ],
   }),
   component: HearthPage,
@@ -113,8 +114,8 @@ function HearthPage() {
 
   const send = useMutation({
     mutationFn: async (payload: { content: string; attachments: Pending[] }) => {
-      const storageKey = Object.keys(window.localStorage).find((k) => k.endsWith("-auth-token"));
-      const token = storageKey ? (JSON.parse(window.localStorage.getItem(storageKey) ?? "{}")?.access_token as string | undefined) : undefined;
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
       if (!token) throw new Error("You're signed out. Refresh the page.");
       const res = await fetch("/api/hearth/chat", {
         method: "POST",
@@ -223,7 +224,7 @@ function HearthPage() {
     if ((!value && pending.length === 0) || !roomId || busy || uploading) return;
     setText("");
     setStatus(pending.length ? "Reading your document…" : "Gathering my thoughts…");
-    send.mutate({ content: value, attachments: pending });
+    send.mutate({ content: value, attachments: pending }, { onError: () => setText((current) => current || value) });
   };
 
   const submit = (e: React.FormEvent) => {
@@ -266,14 +267,15 @@ function HearthPage() {
                 <p className="mt-2 text-sm text-muted-foreground">Start wherever you are.</p>
                 <div className="mt-8 flex flex-wrap gap-2">
                   {SUGGESTIONS.map((s) => (
-                    <button
+                    <Button
                       key={s}
                       type="button"
+                      variant="outline"
                       onClick={() => doSend(s)}
                       className="rounded-full border border-border/70 px-4 py-2 text-sm text-muted-foreground transition-colors hover:border-primary/60 hover:text-foreground"
                     >
                       {s}
-                    </button>
+                    </Button>
                   ))}
                 </div>
               </div>
@@ -311,7 +313,7 @@ function HearthPage() {
               ) : (
                 <div className="flex justify-start">
                   <p className="rounded-lg border border-border/60 bg-card px-4 py-3 text-sm italic text-muted-foreground">
-                    <span className="mr-2 inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-primary align-middle" />
+                    <span className="thinking-dots mr-2 inline-flex gap-1 align-middle" aria-hidden="true"><i /><i /><i /></span>
                     {status ?? "Gathering my thoughts…"}
                   </p>
                 </div>
@@ -324,14 +326,16 @@ function HearthPage() {
               {pending.map((a, i) => (
                 <li key={i} className="flex items-center gap-2 rounded-full bg-accent/50 px-3 py-1 text-xs">
                   <span className="max-w-[160px] truncate">{a.name}</span>
-                  <button
+                  <Button
                     type="button"
+                    variant="ghost"
+                    size="icon"
                     aria-label={`Remove ${a.name}`}
                     onClick={() => setPending((p) => p.filter((_, j) => j !== i))}
-                    className="hover:text-destructive"
+                    className="h-5 w-5 hover:text-destructive"
                   >
                     <X className="h-3 w-3" />
-                  </button>
+                  </Button>
                 </li>
               ))}
             </ul>
@@ -353,7 +357,7 @@ function HearthPage() {
               value={text}
               onChange={(e) => setText(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
+                if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
                   e.preventDefault();
                   doSend(text.trim());
                 }

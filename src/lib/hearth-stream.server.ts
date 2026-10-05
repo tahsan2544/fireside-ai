@@ -104,13 +104,6 @@ export async function* streamChat(supabase: any, userId: string, input: StreamCh
         : plan === "free"
           ? (settings.free_daily_messages ?? 30)
           : 0;
-    const reserved = await bumpUsage(userId, 1);
-    if (dailyCap > 0 && reserved > dailyCap) {
-      await bumpUsage(userId, -1);
-      yield fail(`That's ${dailyCap} messages today on the free hearth. Come back tomorrow, or open the door wider from Pricing.`);
-      return;
-    }
-
     const { data: convo } = await supabase
       .from("conversations")
       .select("id, user_id, title")
@@ -130,12 +123,19 @@ export async function* streamChat(supabase: any, userId: string, input: StreamCh
       }
       const { data: signed, error: sErr } = await supabase.storage
         .from("chat-attachments")
-        .createSignedUrl(path, 60 * 60 * 24 * 365);
+        .createSignedUrl(path, 60 * 60);
       if (sErr || !signed?.signedUrl) {
         yield fail("That attachment couldn't be read.");
         return;
       }
       resolvedAttachments.push({ url: signed.signedUrl, type: a.type, name: a.name, path });
+    }
+
+    const reserved = await bumpUsage(userId, 1);
+    if (dailyCap > 0 && reserved > dailyCap) {
+      await bumpUsage(userId, -1);
+      yield fail(`That's ${dailyCap} messages today on the free hearth. Come back tomorrow, or open the door wider from Pricing.`);
+      return;
     }
 
     const { error: uErr } = await supabase.from("messages").insert({
@@ -145,6 +145,7 @@ export async function* streamChat(supabase: any, userId: string, input: StreamCh
       attachments: resolvedAttachments,
     });
     if (uErr) {
+      await bumpUsage(userId, -1);
       yield fail("That message didn't come through. Try again.");
       return;
     }
@@ -153,7 +154,7 @@ export async function* streamChat(supabase: any, userId: string, input: StreamCh
       .from("messages")
       .select("role, content, attachments")
       .eq("conversation_id", input.conversationId)
-      .order("created_at", { ascending: true })
+      .order("created_at", { ascending: false })
       .limit(40);
 
     const memories = profile?.memory_enabled === false ? [] : await readMemories(supabase, userId);
@@ -161,7 +162,7 @@ export async function* streamChat(supabase: any, userId: string, input: StreamCh
     const { streamHearthChat } = await import("./hearth.server");
     let full = "";
     for await (const delta of streamHearthChat(
-      (recent ?? []).map((m: any) => ({
+      [...(recent ?? [])].reverse().map((m: any) => ({
         role: m.role as "user" | "assistant",
         content: m.content,
         attachments: (m.attachments ?? []) as any,

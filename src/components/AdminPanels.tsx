@@ -24,6 +24,9 @@ const TOGGLES: { key: keyof SiteSettings; label: string; hint: string }[] = [
   { key: "voice_enabled", label: "Voice", hint: "Speaking aloud with the AI" },
   { key: "image_gen_enabled", label: "Image making", hint: "AI can create pictures" },
   { key: "doc_gen_enabled", label: "Document making", hint: "AI can write documents" },
+  { key: "journal_enabled", label: "Journal", hint: "Keep private journal entries" },
+  { key: "memory_enabled", label: "Memory", hint: "Let people choose what is remembered" },
+  { key: "quiet_rooms_enabled", label: "Quiet Rooms", hint: "Silent shared spaces in the Commons" },
 ];
 
 export function AdminSiteSettings() {
@@ -47,13 +50,14 @@ export function AdminSiteSettings() {
     onError: (e) => toast.error(e instanceof Error ? e.message : "Couldn't save"),
   });
 
-  if (!form) return <Skeleton className="h-64 w-full rounded-xl" />;
+  if (settings.isError) return <p role="alert" className="text-sm text-destructive">Settings could not be loaded. Refresh and try again.</p>;
+  if (!form) return <Skeleton className="h-64 w-full rounded-md" />;
 
   const set = <K extends keyof SiteSettings>(k: K, v: SiteSettings[K]) => setForm({ ...form, [k]: v });
 
   return (
     <form
-      className="space-y-6 rounded-xl bg-card warm-border p-5"
+      className="space-y-6 border-t border-border/60 pt-6"
       onSubmit={(e) => {
         e.preventDefault();
         save.mutate(form);
@@ -84,6 +88,7 @@ export function AdminSiteSettings() {
         />
       </div>
 
+      <h3 className="serif text-lg">What is open</h3>
       <div className="grid gap-3 sm:grid-cols-2">
         {TOGGLES.map((t) => (
           <div key={String(t.key)} className="flex items-center justify-between gap-3 rounded-lg bg-accent/30 px-4 py-3">
@@ -92,12 +97,15 @@ export function AdminSiteSettings() {
               <p className="text-xs text-muted-foreground">{t.hint}</p>
             </div>
             <Switch
+              aria-label={t.label}
               checked={form[t.key] as boolean}
               onCheckedChange={(v) => set(t.key, v as SiteSettings[typeof t.key])}
             />
           </div>
         ))}
       </div>
+
+      <h3 className="serif text-lg">Daily allowances</h3>
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-1.5">
@@ -120,9 +128,14 @@ export function AdminSiteSettings() {
         </div>
       </div>
 
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-1.5"><Label htmlFor="free-messages">Free messages each day</Label><Input id="free-messages" type="number" min={0} max={10000} value={form.free_daily_messages} onChange={(e) => set("free_daily_messages", Number(e.target.value) || 0)} /></div>
+        <div className="space-y-1.5"><Label htmlFor="free-voice">Free voice seconds each day</Label><Input id="free-voice" type="number" min={0} max={100000} value={form.free_daily_voice_seconds} onChange={(e) => set("free_daily_voice_seconds", Number(e.target.value) || 0)} /></div>
+      </div>
+
       <div className="space-y-1.5">
-        <Label>AI model</Label>
-        <Input value={form.ai_model} onChange={(e) => set("ai_model", e.target.value)} />
+        <Label htmlFor="ai-model">AI model</Label>
+        <Input id="ai-model" value={form.ai_model} onChange={(e) => set("ai_model", e.target.value)} />
       </div>
 
       <div className="space-y-1.5">
