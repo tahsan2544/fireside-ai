@@ -23,6 +23,9 @@ import { Route as AuthenticatedJournalRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedMemoryRouteImport } from './routes/_authenticated/memory'
 import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authenticated/onboarding'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
+import { Route as AuthenticatedWriteRouteImport } from './routes/_authenticated/write'
+import { Route as BlogIndexRouteImport } from './routes/blog.index'
+import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
 import { Route as AuthenticatedChatIdRouteImport } from './routes/_authenticated/chat.$id'
 import { Route as ApiHearthChatRouteImport } from './routes/api/hearth/chat'
 
@@ -95,6 +98,21 @@ const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedWriteRoute = AuthenticatedWriteRouteImport.update({
+  id: '/write',
+  path: '/write',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const BlogIndexRoute = BlogIndexRouteImport.update({
+  id: '/blog/',
+  path: '/blog/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BlogSlugRoute = BlogSlugRouteImport.update({
+  id: '/blog/$slug',
+  path: '/blog/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedChatIdRoute = AuthenticatedChatIdRouteImport.update({
   id: '/chat/$id',
   path: '/chat/$id',
@@ -120,6 +138,9 @@ export interface FileRoutesByFullPath {
   '/memory': typeof AuthenticatedMemoryRoute
   '/onboarding': typeof AuthenticatedOnboardingRoute
   '/settings': typeof AuthenticatedSettingsRoute
+  '/write': typeof AuthenticatedWriteRoute
+  '/blog/$slug': typeof BlogSlugRoute
+  '/blog/': typeof BlogIndexRoute
   '/chat/$id': typeof AuthenticatedChatIdRoute
   '/api/hearth/chat': typeof ApiHearthChatRoute
 }
@@ -137,6 +158,9 @@ export interface FileRoutesByTo {
   '/memory': typeof AuthenticatedMemoryRoute
   '/onboarding': typeof AuthenticatedOnboardingRoute
   '/settings': typeof AuthenticatedSettingsRoute
+  '/write': typeof AuthenticatedWriteRoute
+  '/blog/$slug': typeof BlogSlugRoute
+  '/blog': typeof BlogIndexRoute
   '/chat/$id': typeof AuthenticatedChatIdRoute
   '/api/hearth/chat': typeof ApiHearthChatRoute
 }
@@ -156,6 +180,9 @@ export interface FileRoutesById {
   '/_authenticated/memory': typeof AuthenticatedMemoryRoute
   '/_authenticated/onboarding': typeof AuthenticatedOnboardingRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
+  '/_authenticated/write': typeof AuthenticatedWriteRoute
+  '/blog/$slug': typeof BlogSlugRoute
+  '/blog/': typeof BlogIndexRoute
   '/_authenticated/chat/$id': typeof AuthenticatedChatIdRoute
   '/api/hearth/chat': typeof ApiHearthChatRoute
 }
@@ -175,6 +202,9 @@ export interface FileRouteTypes {
     | '/memory'
     | '/onboarding'
     | '/settings'
+    | '/write'
+    | '/blog/$slug'
+    | '/blog/'
     | '/chat/$id'
     | '/api/hearth/chat'
   fileRoutesByTo: FileRoutesByTo
@@ -192,6 +222,9 @@ export interface FileRouteTypes {
     | '/memory'
     | '/onboarding'
     | '/settings'
+    | '/write'
+    | '/blog/$slug'
+    | '/blog'
     | '/chat/$id'
     | '/api/hearth/chat'
   id:
@@ -210,6 +243,9 @@ export interface FileRouteTypes {
     | '/_authenticated/memory'
     | '/_authenticated/onboarding'
     | '/_authenticated/settings'
+    | '/_authenticated/write'
+    | '/blog/$slug'
+    | '/blog/'
     | '/_authenticated/chat/$id'
     | '/api/hearth/chat'
   fileRoutesById: FileRoutesById
@@ -221,6 +257,8 @@ export interface RootRouteChildren {
   HelpRoute: typeof HelpRoute
   PricingRoute: typeof PricingRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  BlogSlugRoute: typeof BlogSlugRoute
+  BlogIndexRoute: typeof BlogIndexRoute
   ApiHearthChatRoute: typeof ApiHearthChatRoute
 }
 
@@ -324,6 +362,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSettingsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/write': {
+      id: '/_authenticated/write'
+      path: '/write'
+      fullPath: '/write'
+      preLoaderRoute: typeof AuthenticatedWriteRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/blog/': {
+      id: '/blog/'
+      path: '/blog'
+      fullPath: '/blog/'
+      preLoaderRoute: typeof BlogIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/blog/$slug': {
+      id: '/blog/$slug'
+      path: '/blog/$slug'
+      fullPath: '/blog/$slug'
+      preLoaderRoute: typeof BlogSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/chat/$id': {
       id: '/_authenticated/chat/$id'
       path: '/chat/$id'
@@ -350,6 +409,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedMemoryRoute: typeof AuthenticatedMemoryRoute
   AuthenticatedOnboardingRoute: typeof AuthenticatedOnboardingRoute
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
+  AuthenticatedWriteRoute: typeof AuthenticatedWriteRoute
   AuthenticatedChatIdRoute: typeof AuthenticatedChatIdRoute
 }
 
@@ -362,6 +422,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedMemoryRoute: AuthenticatedMemoryRoute,
   AuthenticatedOnboardingRoute: AuthenticatedOnboardingRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
+  AuthenticatedWriteRoute: AuthenticatedWriteRoute,
   AuthenticatedChatIdRoute: AuthenticatedChatIdRoute,
 }
 
@@ -375,6 +436,8 @@ const rootRouteChildren: RootRouteChildren = {
   HelpRoute: HelpRoute,
   PricingRoute: PricingRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  BlogSlugRoute: BlogSlugRoute,
+  BlogIndexRoute: BlogIndexRoute,
   ApiHearthChatRoute: ApiHearthChatRoute,
 }
 export const routeTree = rootRouteImport

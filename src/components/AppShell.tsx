@@ -99,6 +99,14 @@ export function AppShell({ children }: { children: ReactNode }) {
             ))}
             {isAdmin && (
               <Link
+                to="/write"
+                className="hidden rounded-md px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground sm:inline-flex"
+              >
+                Write
+              </Link>
+            )}
+            {isAdmin && (
+              <Link
                 to="/admin"
                 className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs text-primary hover:bg-accent/50"
               >
@@ -149,6 +157,10 @@ export function AppShell({ children }: { children: ReactNode }) {
         {DISCLAIMER}{" "}
         <Link to="/pricing" className="text-primary hover:underline">
           Plans
+        </Link>{" "}
+        ·{" "}
+        <Link to="/blog" className="text-primary hover:underline">
+          Reflections
         </Link>
       </footer>
     </div>
