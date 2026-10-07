@@ -36,6 +36,13 @@
       "when": 1790997464391,
       "tag": "0004_server_only_usage_counter",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791368593626,
+      "tag": "0005_blog_posts",
+      "breakpoints": true
     }
   ]
 }
