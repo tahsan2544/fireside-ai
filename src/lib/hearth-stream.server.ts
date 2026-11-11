@@ -28,9 +28,10 @@ const SETTINGS_DEFAULTS = {
   free_daily_messages: 30,
 };
 
-async function readSettings(supabase: any) {
-  const { data } = await supabase.rpc("get_runtime_site_settings");
-  return { ...SETTINGS_DEFAULTS, ...(data ?? {}) } as typeof SETTINGS_DEFAULTS;
+async function readSettings(_supabase: any) {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data } = await supabaseAdmin.rpc("get_runtime_site_settings");
+  return { ...SETTINGS_DEFAULTS, ...((data as Record<string, unknown> | null) ?? {}) } as typeof SETTINGS_DEFAULTS;
 }
 
 async function bumpUsage(userId: string, messages: number): Promise<number> {
