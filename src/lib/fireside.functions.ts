@@ -242,7 +242,7 @@ export const getUsageSummary = createServerFn({ method: "GET" })
           .eq("user_id", userId)
           .eq("date", todayUTC())
           .maybeSingle(),
-        supabase.rpc("get_runtime_site_settings"),
+        import("@/integrations/supabase/client.server").then(({ supabaseAdmin }) => supabaseAdmin.rpc("get_runtime_site_settings")),
         supabase.from("journal_entries").select("*", { count: "exact", head: true }).eq("user_id", userId),
         supabase.from("memory_facts").select("*", { count: "exact", head: true }).eq("user_id", userId),
       ]);

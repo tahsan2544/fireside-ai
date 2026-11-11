@@ -729,7 +729,12 @@ const SETTINGS_DEFAULTS: SiteSettings = {
 };
 
 async function readSettings(supabase: any, publicOnly = false): Promise<SiteSettings> {
-  const { data } = await supabase.rpc(publicOnly ? "get_public_site_settings" : "get_runtime_site_settings");
+  if (publicOnly) {
+    const { data } = await supabase.rpc("get_public_site_settings");
+    return { ...SETTINGS_DEFAULTS, ...(data ?? {}) } as SiteSettings;
+  }
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data } = await supabaseAdmin.rpc("get_runtime_site_settings");
   return { ...SETTINGS_DEFAULTS, ...(data ?? {}) } as SiteSettings;
 }
 
