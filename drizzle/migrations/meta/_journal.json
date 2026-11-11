@@ -50,6 +50,13 @@
       "when": 1794414006755,
       "tag": "0006_blog_posts_drop_auth_fk",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1794414569840,
+      "tag": "0007_lock_private_settings_and_suspension",
+      "breakpoints": true
     }
   ]
 }
