@@ -11,3 +11,4 @@
 
 - Keep Hearth streaming in its authenticated HTTP endpoint and share the saved conversation history in chronological order; it preserves live replies and context.
 - Keep user preferences in the existing authenticated settings functions and site administration in admin-only functions; this keeps personal and privileged changes separated.
+- Blog posts are written by admins straight from the browser (row-level security enforces it) and read publicly through server functions using the public key, so the public pages and sitemap only ever see published posts.
