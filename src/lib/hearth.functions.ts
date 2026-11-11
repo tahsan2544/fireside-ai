@@ -735,7 +735,7 @@ async function readSettings(supabase: any, publicOnly = false): Promise<SiteSett
   }
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data } = await supabaseAdmin.rpc("get_runtime_site_settings");
-  return { ...SETTINGS_DEFAULTS, ...(data ?? {}) } as SiteSettings;
+  return { ...SETTINGS_DEFAULTS, ...((data as Record<string, unknown> | null) ?? {}) } as SiteSettings;
 }
 
 async function assertActive(supabase: any, userId: string) {

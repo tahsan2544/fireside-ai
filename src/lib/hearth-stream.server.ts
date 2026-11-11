@@ -31,7 +31,7 @@ const SETTINGS_DEFAULTS = {
 async function readSettings(_supabase: any) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data } = await supabaseAdmin.rpc("get_runtime_site_settings");
-  return { ...SETTINGS_DEFAULTS, ...(data ?? {}) } as typeof SETTINGS_DEFAULTS;
+  return { ...SETTINGS_DEFAULTS, ...((data as Record<string, unknown> | null) ?? {}) } as typeof SETTINGS_DEFAULTS;
 }
 
 async function bumpUsage(userId: string, messages: number): Promise<number> {
