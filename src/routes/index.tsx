@@ -1,5 +1,4 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
@@ -130,10 +129,6 @@ function Threshold() {
     <main className="relative min-h-dvh bg-background">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: SITE_JSONLD }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: ORG_JSONLD }} />
-
-      <div className="absolute right-4 top-4 z-10">
-        <ThemeToggle />
-      </div>
 
       {/* Hero */}
       <section className="relative overflow-hidden px-6 pb-20 pt-24">

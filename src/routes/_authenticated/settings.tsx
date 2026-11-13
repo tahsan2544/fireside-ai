@@ -4,7 +4,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getPrefs, updatePrefs, getUsageSummary } from "@/lib/fireside.functions";
 import { AppShell } from "@/components/AppShell";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { AI_VOICES } from "@/lib/voices";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,7 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 import { DISCLAIMER } from "@/lib/safety";
 import { toast } from "sonner";
-import { Loader2, LogOut, Brain, NotebookPen, UserRound, Moon, Volume2, ShieldCheck, Activity, ArrowUpRight } from "lucide-react";
+import { Loader2, LogOut, Brain, NotebookPen, UserRound, Volume2, ShieldCheck, Activity, ArrowUpRight } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/settings")({
   head: () => ({
@@ -117,14 +116,6 @@ function SettingsPage() {
           >
             {save.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
           </Button>
-        </section>
-
-        <section className="settings-section mt-10 space-y-4" aria-labelledby="appearance-heading">
-          <h2 id="appearance-heading" className="flex items-center gap-3 serif text-xl"><Moon className="h-5 w-5 text-primary" /> Appearance</h2>
-          <div className="flex items-center justify-between gap-4 border-b border-border/50 py-3">
-            <div><p className="text-sm">Light or dark</p><p className="text-xs text-muted-foreground">Choose what feels right for your eyes.</p></div>
-            <ThemeToggle className="border border-border/70 bg-card" />
-          </div>
         </section>
 
         <section className="settings-section mt-10 space-y-4" aria-labelledby="voice-heading">
