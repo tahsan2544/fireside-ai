@@ -2,8 +2,6 @@
 @source "../src";
 @import "tw-animate-css";
 
-@custom-variant dark (&:is(.dark *));
-
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -36,6 +34,7 @@
 }
 
 :root {
+  color-scheme: light;
   --radius: 0.75rem;
   /* Cream firelit page */
   --background: oklch(0.965 0.02 70);
@@ -62,33 +61,6 @@
   --flame: oklch(0.78 0.2 65);
   --wood: oklch(0.32 0.05 40);
 }
-
-.dark {
-  /* Quiet charcoal surfaces, clear ivory type, ember and sage accents */
-  --background: oklch(0.18 0.012 75);
-  --foreground: oklch(0.94 0.018 82);
-  --card: oklch(0.225 0.014 78);
-  --card-foreground: oklch(0.94 0.018 82);
-  --popover: oklch(0.245 0.016 78);
-  --popover-foreground: oklch(0.94 0.018 82);
-  --primary: oklch(0.76 0.145 62);
-  --primary-foreground: oklch(0.2 0.018 72);
-  --secondary: oklch(0.31 0.035 155);
-  --secondary-foreground: oklch(0.93 0.018 90);
-  --muted: oklch(0.275 0.012 78);
-  --muted-foreground: oklch(0.76 0.018 82);
-  --accent: oklch(0.34 0.04 155);
-  --accent-foreground: oklch(0.94 0.018 90);
-  --destructive: oklch(0.66 0.17 28);
-  --destructive-foreground: oklch(0.98 0.01 80);
-  --border: oklch(0.38 0.014 78);
-  --input: oklch(0.35 0.014 78);
-  --ring: oklch(0.76 0.145 62);
-  --ember: oklch(0.74 0.17 58);
-  --flame: oklch(0.84 0.17 70);
-  --wood: oklch(0.29 0.025 65);
-}
-
 
 @layer base {
   * {
@@ -196,18 +168,6 @@
   box-shadow: 0 1px 0 oklch(1 0 0 / 0.5) inset, 0 4px 20px -8px oklch(0.4 0.1 40 / 0.15);
 }
 
-.dark .warm-border {
-  box-shadow: 0 1px 0 oklch(1 0 0 / 0.04) inset, 0 8px 28px -14px oklch(0 0 0 / 0.7);
-}
-
-.dark .hearth-glow-soft {
-  background: radial-gradient(ellipse at 50% 100%, oklch(0.74 0.19 58 / 0.28), transparent 72%);
-}
-
-.dark ::selection {
-  background: oklch(0.78 0.155 62 / 0.35);
-}
-
 /* ---- Fireside surfaces & motion ---- */
 .surface-1 { background: color-mix(in oklab, var(--card) 90%, var(--background)); }
 .surface-2 { background: var(--card); }
@@ -216,10 +176,6 @@
   background-image: radial-gradient(oklch(0 0 0 / 0.025) 1px, transparent 1px);
   background-size: 4px 4px;
 }
-.dark .paper {
-  background-image: radial-gradient(oklch(1 1 1 / 0.02) 1px, transparent 1px);
-}
-
 .reading { max-width: 62ch; line-height: 1.75; }
 
 @keyframes ambient-breathe {
@@ -273,7 +229,7 @@
   animation: float-ember linear infinite;
   opacity: 0;
 }
-:root:not(.dark) .ember-field span { box-shadow: 0 0 6px 1px oklch(0.7 0.18 50 / 0.35); }
+.ember-field span { box-shadow: 0 0 6px 1px oklch(0.7 0.18 50 / 0.35); }
 
 @keyframes warm-shimmer {
   from { background-position: -200% 0; }

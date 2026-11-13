@@ -6,7 +6,6 @@ import {
   useRouter,
   HeadContent,
   Scripts,
-  ScriptOnce,
   type ErrorComponentProps,
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
@@ -92,9 +91,6 @@ function RootShell({ children }: { children: ReactNode }) {
     <html lang="en" suppressHydrationWarning>
       <head><HeadContent /></head>
       <body>
-        <ScriptOnce>
-          {`(function(){try{var t=localStorage.getItem('fireside-theme');if(t!=='dark'){t='light';}if(t==='dark'){document.documentElement.classList.add('dark');}document.documentElement.style.colorScheme=t;}catch(e){}})();`}
-        </ScriptOnce>
         {children}
         <Scripts />
       </body>

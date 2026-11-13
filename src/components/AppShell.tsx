@@ -15,7 +15,6 @@ import {
   LifeBuoy,
   LogOut,
 } from "lucide-react";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import type { ReactNode } from "react";
 
 export const ADMIN_EMAIL = "tarifulislam2544@gmail.com";
@@ -114,7 +113,6 @@ export function AppShell({ children }: { children: ReactNode }) {
                 Admin
               </Link>
             )}
-            <ThemeToggle />
             <button
               onClick={signOut}
               className="inline-flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:text-foreground"
